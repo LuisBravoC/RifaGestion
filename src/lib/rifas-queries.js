@@ -508,3 +508,89 @@ export async function getMisBoletos(telefono) {
 
   return { participante, boletos: enriched }
 }
+
+// =============================================================================
+// IMPORTACIÓN CSV
+// =============================================================================
+
+/**
+ * Importa boletos desde filas de CSV ya parseadas.
+ * @param {string}   rifaId       - UUID de la rifa
+ * @param {Array}    filas        - [{numero, nombre, contacto, pagado, fecha}]
+ * @param {number}   precioBoleto - para registrar el pago si pagado===true
+ */
+export async function importarBoletos(rifaId, filas, precioBoleto) {
+  const conNombre = filas.filter(f => f.nombre?.trim())
+  if (conNombre.length === 0) return { importados: 0, saltados: 0 }
+
+  // 1. Obtener todos los boletos de la rifa (para mapear numero → id/estatus)
+  const { data: boletosList } = await supabase
+    .from('boletos')
+    .select('id, numero_asignado, estatus')
+    .eq('rifa_id', rifaId)
+  const boletoMap = Object.fromEntries(
+    (boletosList ?? []).map(b => [b.numero_asignado, b])
+  )
+
+  // 2. Nombres únicos normalizados
+  const uniqueNames = [...new Set(conNombre.map(f => f.nombre.trim()))]
+
+  // 3. Buscar participantes existentes por nombre exacto
+  const { data: existing } = await supabase
+    .from('participantes')
+    .select('id, nombre_completo')
+    .in('nombre_completo', uniqueNames)
+  const partMap = Object.fromEntries((existing ?? []).map(p => [p.nombre_completo, p.id]))
+
+  // 4. Crear participantes faltantes
+  const missing = uniqueNames.filter(n => !partMap[n])
+  if (missing.length > 0) {
+    const toInsert = missing.map(nombre => {
+      const fila = conNombre.find(f => f.nombre.trim() === nombre)
+      return {
+        nombre_completo:    nombre,
+        telefono_whatsapp:  fila?.contacto?.trim() || null,
+      }
+    })
+    const { data: created } = await supabase
+      .from('participantes').insert(toInsert).select('id, nombre_completo')
+    for (const p of created ?? []) partMap[p.nombre_completo] = p.id
+  }
+
+  // 5. Actualizar boletos y recopilar pagos a insertar
+  let importados = 0, saltados = 0
+  const pagosInsert = []
+
+  for (const fila of conNombre) {
+    const boleto = boletoMap[fila.numero]
+    if (!boleto || boleto.estatus !== 'Disponible') { saltados++; continue }
+    const pid = partMap[fila.nombre.trim()]
+    if (!pid) { saltados++; continue }
+
+    const estatus = fila.pagado ? 'Liquidado' : 'Apartado'
+    const fecha   = fila.fecha ?? new Date().toISOString().slice(0, 10)
+
+    await supabase.from('boletos').update({
+      participante_id: pid,
+      estatus,
+      fecha_apartado:  fecha,
+    }).eq('id', boleto.id)
+
+    if (fila.pagado && Number(precioBoleto) > 0) {
+      pagosInsert.push({
+        boleto_id:   boleto.id,
+        monto:       Number(precioBoleto),
+        fecha,
+        metodo_pago: 'Importación CSV',
+      })
+    }
+    importados++
+  }
+
+  // 6. Insertar todos los pagos en lote
+  if (pagosInsert.length > 0) {
+    await supabase.from('historial_pagos_rifa').insert(pagosInsert)
+  }
+
+  return { importados, saltados }
+}

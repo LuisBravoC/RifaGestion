@@ -4,6 +4,7 @@ import {
   Trophy, Search, Plus, X, CheckCircle2, Trash2,
   MessageCircle, Calendar, DollarSign, Zap, Clock, UserPlus,
   LayoutGrid, List as ListIcon, RotateCcw, ArrowRight,
+  Upload, Download,
 } from 'lucide-react'
 import { useQuery } from '../lib/useQuery.js'
 import { useToast } from '../lib/toast.jsx'
@@ -52,6 +53,47 @@ function WhatsAppLink({ nombre, telefono, saldo }) {
   )
 }
 
+// ── Utilidades CSV ──────────────────────────────────────────────────────────
+function normalizeKey(h) {
+  return h.trim().toLowerCase()
+    .normalize('NFD').replace(/[\u0300-\u036f]/g, '')
+}
+
+function parseCSV(text) {
+  const clean  = text.replace(/^\uFEFF/, '')
+  const lines  = clean.split(/\r?\n/).filter(l => l.trim())
+  if (lines.length < 2) return []
+  const headers = lines[0].split(',').map(normalizeKey)
+  return lines.slice(1).map(line => {
+    const fields = []
+    let cur = '', inQ = false
+    for (let i = 0; i < line.length; i++) {
+      if (line[i] === '"')              inQ = !inQ
+      else if (line[i] === ',' && !inQ) { fields.push(cur); cur = '' }
+      else                              cur += line[i]
+    }
+    fields.push(cur)
+    const obj = {}
+    headers.forEach((h, i) => { obj[h] = (fields[i] ?? '').trim() })
+    return obj
+  })
+}
+
+function parseFechaCSV(str) {
+  if (!str) return null
+  const m = str.match(/^(\d{1,2})\/(\d{1,2})\/(\d{4})$/)
+  if (m) return `${m[3]}-${m[2].padStart(2, '0')}-${m[1].padStart(2, '0')}`
+  if (/^\d{4}-\d{2}-\d{2}$/.test(str)) return str
+  return null
+}
+
+function csvEsc(v) {
+  const s = String(v ?? '')
+  return s.includes(',') || s.includes('"') || s.includes('\n')
+    ? `"${s.replace(/"/g, '""')}"`
+    : s
+}
+
 // ── Componente principal ─────────────────────────────────────────────────────
 
 export default function BoletoGrid() {
@@ -92,6 +134,8 @@ export default function BoletoGrid() {
   const [ultimoGanador, setUltimoGanador] = useState(null)
   const [viewMode,     setViewMode]     = useState('grid')  // 'grid' | 'list'
   const ganadoresSeedRef = useRef(null)
+  const fileInputRef    = useRef(null)
+  const [importModal,   setImportModal]   = useState(null) // {preview, importing}
   const navigate = useNavigate()
 
   // ── Búsqueda de participante (debounced) ───────────────────────────────────
@@ -231,6 +275,70 @@ export default function BoletoGrid() {
     try { await q.saveGanadores(rifaId, []) } catch (e) { showErr(e) }
   }
 
+  // ── Exportar CSV ───────────────────────────────────────────────────────────
+  function handleExport() {
+    const header = 'Número,Nombre,Grupo,Pagado,Contacto,Fecha'
+    const rows = boletos.map(b => [
+      b.numero_asignado,
+      b.nombre_completo ?? '',
+      '',
+      b.estatus === 'Liquidado' ? 'TRUE' : 'FALSE',
+      b.telefono_whatsapp ?? '',
+      b.fecha_apartado ? b.fecha_apartado.slice(0, 10) : '',
+    ].map(csvEsc).join(','))
+    const csv  = '\uFEFF' + [header, ...rows].join('\r\n')
+    const blob = new Blob([csv], { type: 'text/csv;charset=utf-8' })
+    const url  = URL.createObjectURL(blob)
+    const a    = document.createElement('a')
+    a.href = url; a.download = `${rifa.nombre_premio ?? 'rifa'}.csv`; a.click()
+    URL.revokeObjectURL(url)
+  }
+
+  // ── Importar CSV (preview) ─────────────────────────────────────────────────
+  function handleImportFile(e) {
+    const file = e.target.files?.[0]
+    if (!file) return
+    const reader = new FileReader()
+    reader.onload = ev => {
+      const rows = parseCSV(ev.target.result)
+      const preview = rows.map(r => {
+        const num    = Number(r['numero'] || r['n\u00famero'] || r['#'] || '')
+        const nombre = (r['nombre'] ?? '').trim()
+        const boleto = boletos.find(b => b.numero_asignado === num)
+        let status = 'ok'
+        if (!nombre)                                  status = 'vacio'
+        else if (!boleto)                             status = 'no-existe'
+        else if (boleto.estatus !== 'Disponible')     status = 'ocupado'
+        return { ...r, _num: num, _status: status }
+      })
+      setImportModal({ preview, importing: false })
+    }
+    reader.readAsText(file, 'utf-8')
+    e.target.value = ''
+  }
+
+  // ── Confirmar importación ──────────────────────────────────────────────────
+  async function handleConfirmImport() {
+    setImportModal(m => ({ ...m, importing: true }))
+    try {
+      const filas = importModal.preview
+        .filter(r => r._status === 'ok')
+        .map(r => ({
+          numero:   r._num,
+          nombre:   (r['nombre'] ?? '').trim(),
+          contacto: (r['contacto'] ?? '').trim(),
+          pagado:   (r['pagado'] ?? '').toUpperCase() === 'TRUE',
+          fecha:    parseFechaCSV(r['fecha'] ?? ''),
+        }))
+      const { importados, saltados } = await q.importarBoletos(
+        rifaId, filas, rifa.precio_boleto
+      )
+      setImportModal(null)
+      setRefresh(r => r + 1)
+      toast(`Importación completada: ${importados} boleto${importados !== 1 ? 's' : ''} importados${saltados ? `, ${saltados} omitidos` : ''}`)
+    } catch (e) { showErr(e); setImportModal(m => ({ ...m, importing: false })) }
+  }
+
   // Verificar expirados al montar + cargar ganadores desde BD
   useEffect(() => {
     if (rifaQ.data?.estatus === 'Activa') {
@@ -291,11 +399,21 @@ export default function BoletoGrid() {
               </span>
             </div>
           </div>
-          {isAdmin && stats.Liquidado > 0 && (
-            <button className="btn btn-primary" onClick={handleElegirGanador}>
-              <Trophy size={15} /> {ganadores.length > 0 ? 'Otro ganador' : 'Elegir ganador'}
+          <div style={{ display: 'flex', gap: '.4rem', flexWrap: 'wrap', justifyContent: 'flex-end' }}>
+            <button className="btn btn-outline btn-sm" onClick={handleExport} title="Exportar CSV">
+              <Download size={14} /> Exportar
             </button>
-          )}
+            {isAdmin && (
+              <button className="btn btn-outline btn-sm" onClick={() => fileInputRef.current?.click()} title="Importar CSV">
+                <Upload size={14} /> Importar
+              </button>
+            )}
+            {isAdmin && stats.Liquidado > 0 && (
+              <button className="btn btn-primary" onClick={handleElegirGanador}>
+                <Trophy size={15} /> {ganadores.length > 0 ? 'Otro ganador' : 'Elegir ganador'}
+              </button>
+            )}
+          </div>
         </div>
 
         {/* ── Resumen financiero ── */}
@@ -798,6 +916,20 @@ export default function BoletoGrid() {
         </>
       )}
 
+      {/* ══ Import CSV ════════════════════════════════════════════════════════ */}
+      <input
+        type="file" accept=".csv" ref={fileInputRef}
+        style={{ display: 'none' }} onChange={handleImportFile}
+      />
+      {importModal && (
+        <ImportModal
+          preview={importModal.preview}
+          importing={importModal.importing}
+          onConfirm={handleConfirmImport}
+          onClose={() => setImportModal(null)}
+        />
+      )}
+
       {/* ══ Tómbola y ganador ══════════════════════════════════════════════════ */}
       {tombola && ultimoGanador && (
         <TombolaModal
@@ -913,6 +1045,71 @@ function TombolaModal({ ganador, lugar, total, onClose }) {
             </button>
           </div>
         )}
+      </div>
+    </>
+  )
+}
+
+// ── Modal de importación CSV ──────────────────────────────────────────────────
+
+function ImportModal({ preview, importing, onConfirm, onClose }) {
+  const toImport = preview.filter(r => r._status === 'ok').length
+  const ocupados = preview.filter(r => r._status === 'ocupado').length
+  const vacios   = preview.filter(r => r._status === 'vacio' || r._status === 'no-existe').length
+
+  return (
+    <>
+      <div className="modal-overlay" onClick={!importing ? onClose : undefined} />
+      <div className="modal-dialog import-modal">
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '.75rem' }}>
+          <h3 style={{ margin: 0, fontSize: '1.05rem', fontWeight: 700 }}>Vista previa — Importar CSV</h3>
+          <button className="btn btn-icon" onClick={onClose} disabled={importing}><X size={16} /></button>
+        </div>
+
+        <div className="import-summary">
+          <span className="import-badge import-badge--ok">✓ {toImport} a importar</span>
+          {ocupados > 0 && <span className="import-badge import-badge--warn">{ocupados} ya ocupados</span>}
+          {vacios   > 0 && <span className="import-badge import-badge--gray">{vacios} sin nombre</span>}
+        </div>
+
+        <div className="import-table-wrap">
+          <table className="import-table">
+            <thead>
+              <tr>
+                <th>#</th><th>Nombre</th><th>Grupo</th><th>Pagado</th><th>Contacto</th><th>Fecha</th><th>Estado</th>
+              </tr>
+            </thead>
+            <tbody>
+              {preview.map((r, i) => (
+                <tr key={i} className={`import-row import-row--${r._status}`}>
+                  <td>{r._num || '—'}</td>
+                  <td>{r.nombre || <em style={{ opacity: .5 }}>—</em>}</td>
+                  <td>{r.grupo}</td>
+                  <td>{r.pagado}</td>
+                  <td>{r.contacto}</td>
+                  <td>{r.fecha}</td>
+                  <td>
+                    {r._status === 'ok'        && <span className="import-tag ok">Importar</span>}
+                    {r._status === 'ocupado'   && <span className="import-tag warn">Ocupado</span>}
+                    {r._status === 'vacio'     && <span className="import-tag gray">Vacío</span>}
+                    {r._status === 'no-existe' && <span className="import-tag gray">No existe</span>}
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+
+        <div className="modal-actions" style={{ marginTop: '1rem' }}>
+          <button className="btn btn-outline" onClick={onClose} disabled={importing}>Cancelar</button>
+          <button
+            className="btn btn-primary"
+            onClick={onConfirm}
+            disabled={importing || toImport === 0}
+          >
+            {importing ? 'Importando…' : `Importar ${toImport} boleto${toImport !== 1 ? 's' : ''}`}
+          </button>
+        </div>
       </div>
     </>
   )

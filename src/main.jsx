@@ -10,7 +10,7 @@ import './styles/theme-google.css'
 
 ReactDOM.createRoot(document.getElementById('root')).render(
   <React.StrictMode>
-    <BrowserRouter basename="/FotografiaGestion/">
+    <BrowserRouter basename="/RifaGestion/">
       <ThemeProvider>
         <App />
       </ThemeProvider>
