@@ -28,11 +28,16 @@ export function useGanadores(rifaId, rifaData, showErr) {
       const winner  = await q.elegirGanador(rifaId, excluir)
       if (!winner) { showErr('No hay boletos liquidados disponibles para el sorteo.'); return }
       setUltimoGanador(winner)
-      const newGanadores = [...ganadores, winner]
-      setGanadores(newGanadores)
       setTombola(true)
-      await q.saveGanadores(rifaId, newGanadores)
+      // Guardar en BD pero NO añadir a la lista hasta que el usuario cierre la ruleta
+      await q.saveGanadores(rifaId, [...ganadores, winner])
     } catch (e) { showErr(e) }
+  }
+
+  function handleTombolaClose() {
+    // Ahora sí añadir el ganador a la lista visible
+    if (ultimoGanador) setGanadores(prev => [...prev, ultimoGanador])
+    setTombola(false)
   }
 
   async function handleRemoveGanador(ganadorId) {
@@ -49,7 +54,7 @@ export function useGanadores(rifaId, rifaData, showErr) {
   return {
     ganadores,
     tombola,
-    setTombola,
+    handleTombolaClose,
     ultimoGanador,
     handleElegirGanador,
     handleRemoveGanador,

@@ -194,6 +194,10 @@ export default function BoletoPanel({ boleto: boletoInicial, rifa, total, isAdmi
   }
 
   // ── Render ────────────────────────────────────────────────────────────────
+  // Derivar totales desde pagos (siempre en sync con la lista local)
+  const totalPagado    = loadingPagos ? Number(boleto.total_pagado) : pagos.reduce((s, p) => s + Number(p.monto), 0)
+  const saldoPendiente = Math.max(0, Number(rifa.precio_boleto) - totalPagado)
+
   return (
     <>
       <div className="drawer-overlay" onClick={onClose} />
@@ -352,8 +356,8 @@ export default function BoletoPanel({ boleto: boletoInicial, rifa, total, isAdmi
                   )}
                 </div>
                 <div onClick={e => e.stopPropagation()}>
-                  {boleto.telefono_whatsapp && boleto.saldo_pendiente > 0 && (
-                    <WhatsAppLink nombre={boleto.nombre_completo} telefono={boleto.telefono_whatsapp} saldo={boleto.saldo_pendiente} />
+                  {boleto.telefono_whatsapp && saldoPendiente > 0 && (
+                    <WhatsAppLink nombre={boleto.nombre_completo} telefono={boleto.telefono_whatsapp} saldo={saldoPendiente} />
                   )}
                 </div>
               </div>
@@ -365,15 +369,15 @@ export default function BoletoPanel({ boleto: boletoInicial, rifa, total, isAdmi
               </div>
               <div className="boleto-panel-info-row">
                 <span>Total abonado</span>
-                <strong style={{ color: 'var(--liquidado)' }}>{fmt(boleto.total_pagado)}</strong>
+                <strong style={{ color: 'var(--liquidado)' }}>{fmt(totalPagado)}</strong>
               </div>
               <div className="boleto-panel-info-row" style={{ borderBottom: '1px solid var(--border)', paddingBottom: '.5rem', marginBottom: '.75rem' }}>
                 <span>Saldo pendiente</span>
-                <strong style={{ color: boleto.saldo_pendiente > 0 ? 'var(--abonado)' : 'var(--liquidado)' }}>
-                  {fmt(Math.max(0, boleto.saldo_pendiente))}
+                <strong style={{ color: saldoPendiente > 0 ? 'var(--abonado)' : 'var(--liquidado)' }}>
+                  {fmt(saldoPendiente)}
                 </strong>
               </div>
-              <ProgressBar value={Number(boleto.total_pagado)} max={Number(rifa.precio_boleto)} />
+              <ProgressBar value={totalPagado} max={Number(rifa.precio_boleto)} />
 
               {/* Historial de pagos */}
               <p className="field-section-label" style={{ marginTop: '1rem' }}>Historial de pagos</p>

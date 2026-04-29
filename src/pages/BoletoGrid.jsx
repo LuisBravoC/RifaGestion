@@ -80,7 +80,7 @@ export default function BoletoGrid() {
   function closePanel()       { setPanel(null) }
 
   // ── Ganadores ──────────────────────────────────────────────────────────────
-  const { ganadores, tombola, setTombola, ultimoGanador, handleElegirGanador, handleRemoveGanador, handleResetSorteo } = useGanadores(rifaId, rifaQ.data, showErr)
+  const { ganadores, tombola, handleTombolaClose, ultimoGanador, handleElegirGanador, handleRemoveGanador, handleResetSorteo } = useGanadores(rifaId, rifaQ.data, showErr)
   const [viewMode,     setViewMode]     = useState('grid')  // 'grid' | 'list'
   const fileInputRef    = useRef(null)
   const [importModal,   setImportModal]   = useState(null) // {preview, importing}
@@ -401,9 +401,9 @@ export default function BoletoGrid() {
       {tombola && ultimoGanador && (
         <TombolaModal
           ganador={ultimoGanador}
-          lugar={ganadores.length}
+          lugar={ganadores.length + 1}
           total={total}
-          onClose={() => setTombola(false)}
+          onClose={handleTombolaClose}
         />
       )}
 

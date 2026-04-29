@@ -26,6 +26,7 @@ CREATE TABLE IF NOT EXISTS rifas (
   estatus          text          NOT NULL DEFAULT 'Activa'
                                  CHECK (estatus IN ('Activa','Finalizada','Cancelada')),
   horas_expiracion int           NOT NULL DEFAULT 24,
+  ganadores        jsonb         NOT NULL DEFAULT '[]'::jsonb,
   created_at       timestamptz   NOT NULL DEFAULT now()
 );
 
