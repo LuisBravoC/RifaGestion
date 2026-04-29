@@ -2,7 +2,7 @@ import { useState, useEffect, useRef } from 'react'
 import { useParams, useNavigate, Link } from 'react-router-dom'
 import {
   Trophy, Search, Plus, X, CheckCircle2, Trash2,
-  MessageCircle, Calendar, DollarSign, Zap, Clock, UserPlus,
+  Calendar, DollarSign, Zap, Clock, UserPlus,
   LayoutGrid, List as ListIcon, RotateCcw, ArrowRight,
   Upload, Download, FileText,
 } from 'lucide-react'
@@ -23,27 +23,6 @@ import TombolaModal from '../components/TombolaModal.jsx'
 import ImportModal from '../components/ImportModal.jsx'
 import { parseCSV, parseFechaCSV, csvEsc, exportarBoletos, buildImportPreview, previewToFilas } from '../lib/csv-utils.js'
 import { generarRifaPDF } from '../lib/rifaPdf.js'
-
-// ── Utilidades ──────────────────────────────────────────────────────────────
-
-function WhatsAppLink({ nombre, telefono, saldo }) {
-  const phone = '52' + (telefono ?? '').replace(/\D/g, '')
-  if (phone.length < 12) return null
-  const msg = encodeURIComponent(
-    `Hola ${nombre}, te recordamos que tu saldo pendiente para la rifa es de *${fmt(saldo)}*. ¡Gracias por participar!`
-  )
-  return (
-    <a
-      href={`https://wa.me/${phone}?text=${msg}`}
-      target="_blank"
-      rel="noopener noreferrer"
-      className="btn-wa"
-      title={`WhatsApp a ${nombre}`}
-    >
-      <MessageCircle size={15} />
-    </a>
-  )
-}
 
 // ── Componente principal ─────────────────────────────────────────────────────
 

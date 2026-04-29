@@ -8,25 +8,8 @@ import { fmt, fmtNum, fmtDate, today } from '../lib/formatters.js'
 import * as q from '../lib/rifas-queries.js'
 import ProgressBar from './ProgressBar.jsx'
 import { parseError } from '../lib/parseError.js'
+import WhatsAppBtn from './WhatsAppBtn.jsx'
 
-function WhatsAppLink({ nombre, telefono, saldo }) {
-  const phone = '52' + (telefono ?? '').replace(/\D/g, '')
-  if (phone.length < 12) return null
-  const msg = encodeURIComponent(
-    `Hola ${nombre}, te recordamos que tu saldo pendiente para la rifa es de *${fmt(saldo)}*. ¡Gracias por participar!`
-  )
-  return (
-    <a
-      href={`https://wa.me/${phone}?text=${msg}`}
-      target="_blank"
-      rel="noopener noreferrer"
-      className="btn-wa"
-      title={`WhatsApp a ${nombre}`}
-    >
-      <MessageCircle size={15} />
-    </a>
-  )
-}
 
 // ── Componente ────────────────────────────────────────────────────────────────
 
@@ -347,7 +330,7 @@ export default function BoletoPanel({ boleto: boletoInicial, rifa, total, isAdmi
                 </div>
                 <div onClick={e => e.stopPropagation()}>
                   {boleto.telefono_whatsapp && saldoPendiente > 0 && (
-                    <WhatsAppLink nombre={boleto.nombre_completo} telefono={boleto.telefono_whatsapp} saldo={saldoPendiente} />
+                    <WhatsAppBtn nombre={boleto.nombre_completo} telefono={boleto.telefono_whatsapp} saldo={saldoPendiente} />
                   )}
                 </div>
               </div>
