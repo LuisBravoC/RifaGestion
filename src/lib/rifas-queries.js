@@ -477,13 +477,34 @@ export async function getHistorialGlobal({ campanaId = null, page = 0, pageSize 
     .range(page * pageSize, (page + 1) * pageSize - 1)
 
   if (campanaId) {
-    // Filtrar a través de la relación boleto → rifa → campana
     query = query.eq('boleto.rifa.campana_id', campanaId)
   }
 
   const { data, error, count } = await query
   if (error) { console.error('[rifas] getHistorialGlobal', error); throw error }
   return { pagos: data ?? [], total: count ?? 0 }
+}
+
+/**
+ * Boletos pendientes de pago (Apartado o Vencido con participante asignado).
+ * Devuelve datos enriquecidos desde vista_saldo_boletos.
+ * Soporta filtro por campana, por rifa y por estatus.
+ */
+export async function getPendientes({ campanaId = null, rifaId = null, estatus = null } = {}) {
+  let query = supabase
+    .from('vista_saldo_boletos')
+    .select('*')
+    .not('participante_id', 'is', null)
+    .gt('saldo_pendiente', 0)
+    .order('fecha_apartado', { ascending: true })
+
+  if (estatus)   query = query.eq('estatus', estatus)
+  else           query = query.in('estatus', ['Apartado', 'Vencido'])
+
+  if (rifaId)    query = query.eq('rifa_id', rifaId)
+  if (campanaId) query = query.eq('campana_id', campanaId)
+
+  return check(await query, 'getPendientes')
 }
 
 export async function insertPagoRifa(data) {
