@@ -2332,8 +2332,8 @@ html.google .stat-label {
   animation: winnerIn .4s cubic-bezier(.175,.885,.32,1.275) both;
 }
 @keyframes winnerIn {
-  from { opacity: 0; transform: scale(.7); }
-  to   { opacity: 1; transform: scale(1); }
+  from { opacity: 0; transform: translate(-50%, -50%) scale(.7); }
+  to   { opacity: 1; transform: translate(-50%, -50%) scale(1); }
 }
 .winner-confetti { font-size: 3rem; margin-bottom: .5rem; animation: bounce .6s ease infinite alternate; }
 @keyframes bounce { from { transform: translateY(0); } to { transform: translateY(-8px); } }
@@ -2530,7 +2530,7 @@ html.google .stat-label {
   font-size: 1.5rem;
 }
 
-/* Sección de rifa en el detalle de participante */
+/* Secciï¿½n de rifa en el detalle de participante */
 .part-rifa-section {
   background: var(--bg-card);
   border: 1px solid var(--border);
