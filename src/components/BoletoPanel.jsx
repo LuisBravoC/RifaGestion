@@ -160,8 +160,8 @@ export default function BoletoPanel({ boleto: boletoInicial, rifa, total, isAdmi
         q.getPagosByBoleto(boleto.id),
         q.getBoleto(boleto.id),
       ])
-      // Revertir a Apartado si era Liquidado y ahora tiene saldo pendiente
-      if (boletoActualizado.estatus === 'Liquidado' && Number(boletoActualizado.saldo_pendiente) > 0) {
+      // Revertir a Apartado si el saldo pendiente > 0 (aplica a Liquidado y Vencido)
+      if ((boletoActualizado.estatus === 'Liquidado' || boletoActualizado.estatus === 'Vencido') && Number(boletoActualizado.saldo_pendiente) > 0) {
         await q.revertirApartado(boleto.id)
         setBoleto(await q.getBoleto(boleto.id))
       } else {
@@ -198,6 +198,11 @@ export default function BoletoPanel({ boleto: boletoInicial, rifa, total, isAdmi
   const totalPagado    = loadingPagos ? Number(boleto.total_pagado) : pagos.reduce((s, p) => s + Number(p.monto), 0)
   const saldoPendiente = Math.max(0, Number(rifa.precio_boleto) - totalPagado)
 
+  // Estatus efectivo: si los pagos cubren el precio, mostrar Liquidado sin esperar round-trip a BD
+  const estatusEfectivo = (!loadingPagos && saldoPendiente === 0 && pagos.length > 0)
+    ? 'Liquidado'
+    : boleto.estatus
+
   return (
     <>
       <div className="drawer-overlay" onClick={onClose} />
@@ -212,13 +217,13 @@ export default function BoletoPanel({ boleto: boletoInicial, rifa, total, isAdmi
             {mode === 'gestionar' && (
               <span
                 className={`badge badge-${
-                  boleto.estatus === 'Liquidado' ? 'liquidado'
-                    : boleto.estatus === 'Apartado' ? 'abonado'
+                  estatusEfectivo === 'Liquidado' ? 'liquidado'
+                    : estatusEfectivo === 'Apartado' ? 'abonado'
                     : 'deuda'
                 }`}
                 style={{ fontSize: '.72rem', marginLeft: '.5rem' }}
               >
-                {boleto.estatus}
+                {estatusEfectivo}
               </span>
             )}
           </h3>
@@ -404,7 +409,7 @@ export default function BoletoPanel({ boleto: boletoInicial, rifa, total, isAdmi
               )}
 
               {/* Agregar pago */}
-              {isAdmin && boleto.estatus !== 'Liquidado' && (
+              {isAdmin && estatusEfectivo !== 'Liquidado' && (
                 <>
                   {showAddPago ? (
                     <div style={{ marginTop: '.75rem' }}>
@@ -445,7 +450,7 @@ export default function BoletoPanel({ boleto: boletoInicial, rifa, total, isAdmi
               {/* Acciones admin */}
               {isAdmin && (
                 <div style={{ marginTop: '1.25rem', display: 'flex', flexDirection: 'column', gap: '.5rem' }}>
-                  {boleto.estatus === 'Apartado' && (
+                  {(estatusEfectivo === 'Apartado' || estatusEfectivo === 'Vencido') && (
                     <button className="btn btn-primary" onClick={handleLiquidar} disabled={saving}>
                       <CheckCircle2 size={15} /> Marcar como liquidado
                     </button>
