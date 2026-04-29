@@ -78,11 +78,13 @@ export default function BoletoPanel({ boleto: boletoInicial, rifa, total, isAdmi
     setSaving(true)
     try {
       let pid = partSeleccionado?.id
+      let nombre = partSeleccionado?.nombre_completo
       if (!pid) {
         const p = await q.insertParticipante(nuevoPart)
-        pid = p.id
+        pid    = p.id
+        nombre = nuevoPart.nombre_completo
       }
-      await q.asignarBoleto(boleto.id, pid, montoAbono, boleto.precio_boleto)
+      await q.asignarBoleto(boleto.id, pid, montoAbono, boleto.precio_boleto, nombre)
       const fueCompleto = Number(montoAbono) >= Number(boleto.precio_boleto)
       toast(fueCompleto
         ? `Boleto #${fmtNum(boleto.numero_asignado, total)} pagado y liquidado 🎉`

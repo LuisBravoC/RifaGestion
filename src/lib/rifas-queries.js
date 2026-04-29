@@ -212,18 +212,19 @@ export async function getBoleto(id) {
 /**
  * Aparta un boleto asignando participante y registrando abono inicial (opcional).
  * Si montoInicial cubre el precio_boleto completo, el boleto queda Liquidado directamente.
+ * nombreParticipante se desnormaliza en el boleto para preservarlo si el participante se elimina.
  */
-export async function asignarBoleto(boletoId, participanteId, montoInicial, precioBoleto) {
+export async function asignarBoleto(boletoId, participanteId, montoInicial, precioBoleto, nombreParticipante) {
   const monto  = Number(montoInicial) || 0
   const precio = Number(precioBoleto) || 0
-  // Liquidar directamente si el abono cubre el precio total
   const nuevoEstatus = (precio > 0 && monto >= precio) ? 'Liquidado' : 'Apartado'
 
   check(
     await supabase.from('boletos').update({
-      participante_id: participanteId,
-      estatus:         nuevoEstatus,
-      fecha_apartado:  new Date().toISOString(),
+      participante_id:     participanteId,
+      nombre_participante: nombreParticipante ?? null,
+      estatus:             nuevoEstatus,
+      fecha_apartado:      new Date().toISOString(),
     }).eq('id', boletoId),
     'asignarBoleto'
   )
@@ -274,9 +275,10 @@ export async function revertirApartado(boletoId) {
 export async function liberarBoleto(boletoId) {
   check(
     await supabase.from('boletos').update({
-      participante_id: null,
-      estatus:         'Disponible',
-      fecha_apartado:  null,
+      participante_id:     null,
+      nombre_participante: null,
+      estatus:             'Disponible',
+      fecha_apartado:      null,
     }).eq('id', boletoId),
     'liberarBoleto'
   )
@@ -412,10 +414,10 @@ export async function buscarParticipantes(query) {
  * Los boletos Liquidados quedan con participante_id = NULL (el pago ya fue recibido).
  */
 export async function deleteParticipante(id) {
-  // Liberar boletos apartados
+  // Liberar boletos apartados (sin pago real) y borrar el nombre guardado
   await supabase
     .from('boletos')
-    .update({ participante_id: null, estatus: 'Disponible', fecha_apartado: null })
+    .update({ participante_id: null, nombre_participante: null, estatus: 'Disponible', fecha_apartado: null })
     .eq('participante_id', id)
     .eq('estatus', 'Apartado')
   return check(

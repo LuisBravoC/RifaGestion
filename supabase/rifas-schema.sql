@@ -43,14 +43,15 @@ CREATE TABLE IF NOT EXISTS participantes (
 -- 4. BOLETOS — entradas individuales, pre-generadas al crear la rifa
 -- ─────────────────────────────────────────────────────────────────────
 CREATE TABLE IF NOT EXISTS boletos (
-  id               uuid        PRIMARY KEY DEFAULT gen_random_uuid(),
-  rifa_id          uuid        NOT NULL REFERENCES rifas(id) ON DELETE CASCADE,
-  participante_id  uuid        REFERENCES participantes(id) ON DELETE SET NULL,
-  numero_asignado  int         NOT NULL,
-  estatus          text        NOT NULL DEFAULT 'Disponible'
-                               CHECK (estatus IN ('Disponible','Apartado','Liquidado','Vencido')),
-  fecha_apartado   timestamptz,
-  created_at       timestamptz NOT NULL DEFAULT now(),
+  id                   uuid        PRIMARY KEY DEFAULT gen_random_uuid(),
+  rifa_id              uuid        NOT NULL REFERENCES rifas(id) ON DELETE CASCADE,
+  participante_id      uuid        REFERENCES participantes(id) ON DELETE SET NULL,
+  nombre_participante  text,                     -- Desnormalizado: persiste aunque se elimine el participante
+  numero_asignado      int         NOT NULL,
+  estatus              text        NOT NULL DEFAULT 'Disponible'
+                                   CHECK (estatus IN ('Disponible','Apartado','Liquidado','Vencido')),
+  fecha_apartado       timestamptz,
+  created_at           timestamptz NOT NULL DEFAULT now(),
   UNIQUE (rifa_id, numero_asignado)
 );
 
@@ -82,7 +83,8 @@ SELECT
   b.numero_asignado,
   b.estatus,
   b.fecha_apartado,
-  p.nombre_completo,
+  -- Preferir el nombre guardado en el boleto; si aún existe el participante usar el suyo
+  COALESCE(b.nombre_participante, p.nombre_completo) AS nombre_completo,
   p.telefono_whatsapp,
   p.email,
   r.precio_boleto,
@@ -98,7 +100,7 @@ LEFT JOIN participantes         p  ON p.id  = b.participante_id
 LEFT JOIN historial_pagos_rifa  hp ON hp.boleto_id = b.id
 GROUP BY
   b.id, b.rifa_id, b.participante_id, b.numero_asignado,
-  b.estatus, b.fecha_apartado,
+  b.estatus, b.fecha_apartado, b.nombre_participante,
   p.nombre_completo, p.telefono_whatsapp, p.email,
   r.precio_boleto, r.nombre_premio, r.campana_id, r.fecha_sorteo, r.cantidad_boletos;
 
