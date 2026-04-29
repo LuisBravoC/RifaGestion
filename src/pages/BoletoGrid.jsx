@@ -9,6 +9,7 @@ import {
 import { useQuery } from '../lib/useQuery.js'
 import { useToast } from '../lib/toast.jsx'
 import { fmt, fmtNum, fmtDate, today } from '../lib/formatters.js'
+import { applyExpiry } from '../lib/boleto-expiry.js'
 import * as q from '../lib/rifas-queries.js'
 import Breadcrumbs from '../components/Breadcrumbs.jsx'
 import { useBreadcrumbs } from '../lib/useBreadcrumbs.js'
@@ -88,20 +89,23 @@ export default function BoletoGrid() {
     } catch (e) { showErr(e); setImportModal(m => ({ ...m, importing: false })) }
   }
 
-  // Verificar expirados al montar + cargar ganadores desde BD
-  useEffect(() => {
-    if (rifaQ.data?.estatus === 'Activa') {
-      q.vencerBoletosExpirados(rifaId, rifaQ.data.horas_expiracion).catch(() => {})
-    }
-  }, [rifaId, rifaQ.data])
-
   // ── Breadcrumbs ────────────────────────────────────────────────────────────
   const campana = campanaQ.data
   const rifa    = rifaQ.data
   const crumbs  = useBreadcrumbs({ campanaId: campana?.nombre, rifaId: rifa?.nombre_premio })
 
   // Los hooks deben ir ANTES de cualquier early return (Reglas de Hooks)
-  const boletos = boletosQ.data ?? []
+  // applyExpiry calcula el estatus en memoria — sin llamada a BD
+  const boletos = useMemo(
+    () => applyExpiry(boletosQ.data ?? [], rifa?.horas_expiracion),
+    [boletosQ.data, rifa?.horas_expiracion]
+  )
+
+  useEffect(() => {
+    if (rifa?.estatus === 'Activa' && rifa?.horas_expiracion) {
+      q.vencerBoletosExpirados(rifaId, rifa.horas_expiracion).catch(() => {})
+    }
+  }, [rifaId, rifa?.estatus, rifa?.horas_expiracion])
 
   // Estadísticas memoizadas — solo se recalculan cuando cambia el array de boletos
   const stats = useMemo(() => boletos.reduce(

@@ -291,7 +291,9 @@ export async function liberarBoleto(boletoId) {
  */
 export async function vencerBoletosExpirados(rifaId, horasExpiracion) {
   if (!rifaId || !horasExpiracion) return
-  const expireDate = new Date(Date.now() - horasExpiracion * 3600000).toISOString()
+  // cutoffDate viene del módulo puro boleto-expiry.js — sin acoplamiento a Supabase
+  const { cutoffDate } = await import('./boleto-expiry.js')
+  const expireDate = cutoffDate(horasExpiracion).toISOString()
   await supabase
     .from('boletos')
     .update({ estatus: 'Vencido' })
