@@ -478,7 +478,7 @@ export async function saveGanadores(rifaId, ganadores) {
 export async function elegirGanador(rifaId, excluirIds = []) {
   let query = supabase
     .from('boletos')
-    .select('id, numero_asignado, participante_id, participantes(id, nombre_completo, telefono_whatsapp)')
+    .select('id, numero_asignado, participante_id, nombre_participante, participantes(id, nombre_completo, telefono_whatsapp)')
     .eq('rifa_id', rifaId)
     .eq('estatus', 'Liquidado')
 

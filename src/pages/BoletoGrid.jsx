@@ -308,7 +308,7 @@ export default function BoletoGrid() {
                     ? partId
                       ? <Link to={`/participantes/${partId}`} style={{ color: 'inherit', textDecoration: 'underline', textDecorationColor: 'var(--border)' }}>{g.participantes.nombre_completo}</Link>
                       : g.participantes.nombre_completo
-                    : '—'}
+                    : g.nombre_participante ?? '—'}
                 </span>
                 {g.participantes?.telefono_whatsapp && (
                   <span style={{ fontSize: '.8rem', color: 'var(--text-muted)' }}>

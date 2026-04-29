@@ -89,7 +89,7 @@ export default function TombolaModal({ ganador, lugar, total, onClose }) {
             <div className="tombola-winner-lugar">{lugarLabel} lugar</div>
             <div className="tombola-winner-num">#{fmtNum(winnerNum, total)}</div>
             <div className="tombola-winner-name">
-              {ganador.participantes?.nombre_completo ?? 'Desconocido'}
+              {ganador.participantes?.nombre_completo ?? ganador.nombre_participante ?? 'Desconocido'}
             </div>
             {ganador.participantes?.telefono_whatsapp && (
               <div className="tombola-winner-tel">{ganador.participantes.telefono_whatsapp}</div>
