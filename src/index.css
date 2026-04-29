@@ -2213,8 +2213,8 @@ html.google .stat-label {
 }
 .boleto-star {
   position: absolute;
-  top: 1px; right: 2px;
-  font-size: .55rem;
+  top: 4px; right: 4px;
+  font-size: .70rem;
   color: var(--abonado);
   line-height: 1;
 }

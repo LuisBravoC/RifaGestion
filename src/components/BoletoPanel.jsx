@@ -28,7 +28,7 @@ function WhatsAppLink({ nombre, telefono, saldo }) {
   const phone = '52' + (telefono ?? '').replace(/\D/g, '')
   if (phone.length < 12) return null
   const msg = encodeURIComponent(
-    `Hola ${nombre}, te recordamos que tu saldo pendiente para la rifa es de *${fmt(saldo)}*. \u00a1Gracias por participar!`
+    `Hola ${nombre}, te recordamos que tu saldo pendiente para la rifa es de *${fmt(saldo)}*. ¡Gracias por participar!`
   )
   return (
     <a
@@ -117,7 +117,7 @@ export default function BoletoPanel({ boleto: boletoInicial, rifa, total, isAdmi
       await q.asignarBoleto(boleto.id, pid, montoAbono, boleto.precio_boleto)
       const fueCompleto = Number(montoAbono) >= Number(boleto.precio_boleto)
       toast(fueCompleto
-        ? `Boleto #${fmtNum(boleto.numero_asignado, total)} pagado y liquidado \uD83C\uDF89`
+        ? `Boleto #${fmtNum(boleto.numero_asignado, total)} pagado y liquidado 🎉`
         : `Boleto #${fmtNum(boleto.numero_asignado, total)} apartado`)
       onDone()
     } catch (e) { showErr(e) }
@@ -126,7 +126,7 @@ export default function BoletoPanel({ boleto: boletoInicial, rifa, total, isAdmi
 
   // ── Acciones: gestionar ───────────────────────────────────────────────────
   async function handleAddPago() {
-    if (!formPago.monto || Number(formPago.monto) <= 0) { showErr('Ingresa un monto v\u00e1lido.'); return }
+    if (!formPago.monto || Number(formPago.monto) <= 0) { showErr('Ingresa un monto válido.'); return }
     setSaving(true)
     try {
       await q.insertPagoRifa({ boleto_id: boleto.id, ...formPago, monto: Number(formPago.monto) })
@@ -164,7 +164,7 @@ export default function BoletoPanel({ boleto: boletoInicial, rifa, total, isAdmi
     setSaving(true)
     try {
       await q.liquidarBoleto(boleto.id, boleto.saldo_pendiente)
-      toast(`Boleto #${fmtNum(boleto.numero_asignado, total)} liquidado \uD83C\uDF89`)
+      toast(`Boleto #${fmtNum(boleto.numero_asignado, total)} liquidado 🎉`)
       onDone()
     } catch (e) { showErr(e) }
     finally { setSaving(false) }
@@ -221,7 +221,7 @@ export default function BoletoPanel({ boleto: boletoInicial, rifa, total, isAdmi
 
               <p className="field-section-label">Participante</p>
 
-              {/* B\u00fasqueda existente */}
+              {/* Búsqueda existente */}
               {!showNewForm && (
                 <div className="field" style={{ position: 'relative' }}>
                   <div style={{ position: 'relative' }}>
@@ -309,7 +309,7 @@ export default function BoletoPanel({ boleto: boletoInicial, rifa, total, isAdmi
                   min="0"
                   value={montoAbono}
                   onChange={e => setMontoAbono(e.target.value)}
-                  placeholder={`0 \u2014 ${fmt(rifa.precio_boleto)}`}
+                  placeholder={`0 — ${fmt(rifa.precio_boleto)}`}
                 />
               </div>
             </>
@@ -325,7 +325,7 @@ export default function BoletoPanel({ boleto: boletoInicial, rifa, total, isAdmi
                 onClick={() => boleto.participante_id && navigate(`/participantes/${boleto.participante_id}`)}
               >
                 <div style={{ flex: 1 }}>
-                  <div style={{ fontWeight: 600, marginBottom: '.15rem' }}>{boleto.nombre_completo ?? '\u2014'}</div>
+                  <div style={{ fontWeight: 600, marginBottom: '.15rem' }}>{boleto.nombre_completo ?? '—'}</div>
                   <div style={{ fontSize: '.82rem', color: 'var(--text-muted)' }}>{boleto.telefono_whatsapp ?? 'Sin tel\u00e9fono'}</div>
                   {boleto.fecha_apartado && (
                     <div style={{ fontSize: '.78rem', color: 'var(--text-muted)', marginTop: '.15rem' }}>
@@ -374,7 +374,7 @@ export default function BoletoPanel({ boleto: boletoInicial, rifa, total, isAdmi
                     <div key={p.id} className="pago-row">
                       <div>
                         <span className="pago-monto">{fmt(p.monto)}</span>
-                        <span className="pago-meta">{fmtDate(p.fecha)} \u00b7 {p.metodo_pago}</span>
+                        <span className="pago-meta">{fmtDate(p.fecha)} · {p.metodo_pago}</span>
                       </div>
                       {isAdmin && (
                         <button className="btn btn-icon btn-danger-icon" onClick={() => handleDeletePago(p.id)} disabled={saving} title="Eliminar pago">
@@ -403,7 +403,7 @@ export default function BoletoPanel({ boleto: boletoInicial, rifa, total, isAdmi
                         </div>
                       </div>
                       <div className="field">
-                        <label>M\u00e9todo</label>
+                        <label>Método</label>
                         <select value={formPago.metodo_pago} onChange={e => setFormPago(f => ({ ...f, metodo_pago: e.target.value }))}>
                           {['Efectivo', 'Transferencia', 'Tarjeta', 'Otro'].map(m => (
                             <option key={m} value={m}>{m}</option>
@@ -412,7 +412,7 @@ export default function BoletoPanel({ boleto: boletoInicial, rifa, total, isAdmi
                       </div>
                       <div style={{ display: 'flex', gap: '.5rem' }}>
                         <button className="btn btn-primary btn-sm" onClick={handleAddPago} disabled={saving}>
-                          {saving ? 'Guardando\u2026' : 'Guardar pago'}
+                          {saving ? 'Guardando…' : 'Guardar pago'}
                         </button>
                         <button className="btn btn-outline btn-sm" onClick={() => setShowAddPago(false)}>Cancelar</button>
                       </div>
@@ -439,10 +439,10 @@ export default function BoletoPanel({ boleto: boletoInicial, rifa, total, isAdmi
                     </button>
                   ) : (
                     <div className="inline-confirm">
-                      <p>\u00bfLiberar este boleto? Se volver\u00e1 disponible y perder\u00e1 su participante.</p>
+                      <p>¿Liberar este boleto? Se volverá disponible y perderá su participante.</p>
                       <div style={{ display: 'flex', gap: '.5rem' }}>
                         <button className="btn btn-danger btn-sm" onClick={handleLiberar} disabled={saving}>
-                          {saving ? '\u2026' : 'S\u00ed, liberar'}
+                          {saving ? '…' : 'Sí, liberar'}
                         </button>
                         <button className="btn btn-outline btn-sm" onClick={() => setConfirmLib(false)}>No</button>
                       </div>
@@ -460,7 +460,7 @@ export default function BoletoPanel({ boleto: boletoInicial, rifa, total, isAdmi
             <>
               <button className="btn btn-outline" onClick={onClose} disabled={saving}>Cancelar</button>
               <button className="btn btn-primary" onClick={handleAsignar} disabled={saving}>
-                {saving ? 'Guardando\u2026' : 'Apartar'}
+                {saving ? 'Guardando…' : 'Apartar'}
               </button>
             </>
           ) : (
