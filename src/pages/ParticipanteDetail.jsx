@@ -18,7 +18,7 @@ import Drawer from '../components/Drawer.jsx'
 import ConfirmModal from '../components/ConfirmModal.jsx'
 import ErrorModal from '../components/ErrorModal.jsx'
 import { parseError } from '../lib/parseError.js'
-import { STATUS_INFO } from '../lib/boleto-status.js'
+import StatusBadge from '../components/StatusBadge.jsx'
 
 // ── Utilidades ────────────────────────────────────────────────────────────────
 
@@ -418,7 +418,6 @@ function RifaSection({ rifa, isAdmin, onPagar, onLiquidar }) {
 // ── Fila individual de boleto ──────────────────────────────────────────────────
 
 function BoletoRow({ boleto: b, total, isAdmin, onPagar, onLiquidar }) {
-  const si    = STATUS_INFO[b.estatus] ?? { label: b.estatus, cls: 'badge-abonado' }
   const saldo = Math.max(0, Number(b.saldo_pendiente))
 
   return (
@@ -427,10 +426,7 @@ function BoletoRow({ boleto: b, total, isAdmin, onPagar, onLiquidar }) {
       <div className="part-boleto-num">#{fmtNum(b.numero_asignado, total)}</div>
 
       {/* Badge estatus */}
-      <span className={`badge ${si.cls}`} style={{ fontSize: '.72rem', flexShrink: 0, display: 'inline-flex', alignItems: 'center', gap: '.25rem' }}>
-        {/* si.icon && <si.icon size={12} /> */}
-        {si.label}
-      </span>
+      <StatusBadge status={b.estatus} style={{ fontSize: '.72rem', flexShrink: 0 }} />
 
       {/* Pagos */}
       <div className="part-boleto-pagos">

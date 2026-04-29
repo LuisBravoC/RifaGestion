@@ -4,7 +4,7 @@ import { Ticket, Search, Phone, CheckCircle2, Clock, AlertCircle } from 'lucide-
 import { fmt } from '../lib/formatters.js'
 import { getMisBoletos } from '../lib/rifas-queries.js'
 import ProgressBar from '../components/ProgressBar.jsx'
-import { STATUS_INFO } from '../lib/boleto-status.js'
+import StatusBadge from '../components/StatusBadge.jsx'
 
 /** Formatea número de boleto con ceros a la izquierda */
 function fmtNum(n, total) {
@@ -167,13 +167,12 @@ function RifaGroup({ rifa, boletos }) {
 }
 
 function BoletoMini({ boleto, total }) {
-  const si  = STATUS_INFO[boleto.estatus] ?? { label: boleto.estatus, cls: 'badge-abonado' }
   const saldo = Number(boleto.saldo_pendiente)
 
   return (
     <div className={`boleto-mini boleto-mini-${boleto.estatus.toLowerCase()}`}>
       <div className="boleto-mini-num">#{fmtNum(boleto.numero_asignado, total)}</div>
-      <span className={`badge ${si.cls}`} style={{ fontSize: '.68rem' }}>{si.label}</span>
+      <StatusBadge status={boleto.estatus} style={{ fontSize: '.68rem' }} />
       <div className="boleto-mini-pagos">
         <span>Pagado: <strong>{fmt(boleto.total_pagado)}</strong></span>
         {saldo > 0 && <span style={{ color: 'var(--abonado)' }}>Falta: <strong>{fmt(saldo)}</strong></span>}
