@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback, useRef, useMemo } from 'react'
+import { useState, useEffect, useCallback, useRef } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
 import {
   Trophy, Search, Plus, X, CheckCircle2, Trash2,
@@ -17,6 +17,9 @@ import ProgressBar from '../components/ProgressBar.jsx'
 import LoadingSpinner, { ErrorMsg } from '../components/LoadingSpinner.jsx'
 import ErrorModal from '../components/ErrorModal.jsx'
 import { parseError } from '../lib/parseError.js'
+import TombolaModal from '../components/TombolaModal.jsx'
+import ImportModal from '../components/ImportModal.jsx'
+import { parseCSV, parseFechaCSV, csvEsc } from '../lib/csv-utils.js'
 
 // ── Utilidades ──────────────────────────────────────────────────────────────
 
@@ -51,47 +54,6 @@ function WhatsAppLink({ nombre, telefono, saldo }) {
       <MessageCircle size={15} />
     </a>
   )
-}
-
-// ── Utilidades CSV ──────────────────────────────────────────────────────────
-function normalizeKey(h) {
-  return h.trim().toLowerCase()
-    .normalize('NFD').replace(/[\u0300-\u036f]/g, '')
-}
-
-function parseCSV(text) {
-  const clean  = text.replace(/^\uFEFF/, '')
-  const lines  = clean.split(/\r?\n/).filter(l => l.trim())
-  if (lines.length < 2) return []
-  const headers = lines[0].split(',').map(normalizeKey)
-  return lines.slice(1).map(line => {
-    const fields = []
-    let cur = '', inQ = false
-    for (let i = 0; i < line.length; i++) {
-      if (line[i] === '"')              inQ = !inQ
-      else if (line[i] === ',' && !inQ) { fields.push(cur); cur = '' }
-      else                              cur += line[i]
-    }
-    fields.push(cur)
-    const obj = {}
-    headers.forEach((h, i) => { obj[h] = (fields[i] ?? '').trim() })
-    return obj
-  })
-}
-
-function parseFechaCSV(str) {
-  if (!str) return null
-  const m = str.match(/^(\d{1,2})\/(\d{1,2})\/(\d{4})$/)
-  if (m) return `${m[3]}-${m[2].padStart(2, '0')}-${m[1].padStart(2, '0')}`
-  if (/^\d{4}-\d{2}-\d{2}$/.test(str)) return str
-  return null
-}
-
-function csvEsc(v) {
-  const s = String(v ?? '')
-  return s.includes(',') || s.includes('"') || s.includes('\n')
-    ? `"${s.replace(/"/g, '""')}"`
-    : s
 }
 
 // ── Componente principal ─────────────────────────────────────────────────────
@@ -1065,176 +1027,6 @@ export default function BoletoGrid() {
       )}
 
       {errModal && <ErrorModal {...errModal} onClose={() => setErrModal(null)} />}
-    </>
-  )
-}
-
-// ── Tómbola + ganador reveal ─────────────────────────────────────────────────
-
-function TombolaModal({ ganador, lugar, total, onClose }) {
-  const winnerNum = ganador.numero_asignado
-  const [displayNum, setDisplayNum] = useState(() => Math.floor(Math.random() * total) + 1)
-  const [phase, setPhase] = useState('fast') // 'fast' | 'slow' | 'stop' | 'reveal'
-  const onCloseRef = useRef(onClose)
-
-  const floaters = useMemo(() =>
-    Array.from({ length: 10 }, (_, i) => ({
-      id:    i,
-      num:   Math.floor(Math.random() * total) + 1,
-      delay: +(i * 0.35).toFixed(2),
-      dur:   +(1.3 + Math.random() * 0.9).toFixed(2),
-      left:  +(5 + Math.random() * 90).toFixed(1),
-    })), [total])
-
-  useEffect(() => {
-    let fastTick, slowTick, t1, t2, t3
-
-    fastTick = setInterval(() =>
-      setDisplayNum(Math.floor(Math.random() * total) + 1), 60)
-
-    t1 = setTimeout(() => {
-      clearInterval(fastTick)
-      setPhase('slow')
-      let slowCount = 0
-      const SLOW_TICKS = 5
-      slowTick = setInterval(() => {
-        slowCount++
-        setDisplayNum(slowCount >= SLOW_TICKS - 1
-          ? winnerNum
-          : Math.floor(Math.random() * total) + 1)
-      }, 240)
-      t2 = setTimeout(() => {
-        clearInterval(slowTick)
-        setDisplayNum(winnerNum)
-        setPhase('stop')
-        t3 = setTimeout(() => setPhase('reveal'), 900)
-      }, 1200)
-    }, 2600)
-
-    return () => {
-      clearInterval(fastTick)
-      clearInterval(slowTick)
-      clearTimeout(t1)
-      clearTimeout(t2)
-      clearTimeout(t3)
-    }
-  }, [total, winnerNum])
-
-  const lugarLabel = ['', '1er', '2do', '3er'][lugar] ?? `${lugar}to`
-  const isReveal = phase === 'reveal'
-
-  return (
-    <>
-      <div className="modal-overlay" onClick={isReveal ? onCloseRef.current : undefined} />
-      <div className={`tombola-stage${isReveal ? ' tombola-stage--reveal' : ''}`}>
-        {!isReveal ? (
-          <>
-            <p className="tombola-title">🎟️ ¡Sorteando!</p>
-            <div className={`tombola-drum tombola-drum--${phase}`}>
-              {[0, 30, 60, 90, 120, 150].map(deg => (
-                <div key={deg} className="tombola-bar" style={{ transform: `rotate(${deg}deg)` }} />
-              ))}
-              <div className={`tombola-numwrap tombola-numwrap--${phase}`}>
-                <div className="tombola-num">{fmtNum(displayNum, total)}</div>
-              </div>
-            </div>
-            <p className="tombola-caption">
-              {phase === 'stop' ? '¡Tenemos ganador! 🎊' : 'Seleccionando ganador...'}
-            </p>
-            <div className="tombola-floaters" aria-hidden="true">
-              {floaters.map(f => (
-                <span
-                  key={f.id}
-                  className="tombola-ticket"
-                  style={{ left: `${f.left}%`, animationDuration: `${f.dur}s`, animationDelay: `${f.delay}s` }}
-                >
-                  #{fmtNum(f.num, total)}
-                </span>
-              ))}
-            </div>
-          </>
-        ) : (
-          <div className="tombola-winner">
-            <div className="tombola-winner-emoji">🎊</div>
-            <div className="tombola-winner-lugar">{lugarLabel} lugar</div>
-            <div className="tombola-winner-num">#{fmtNum(winnerNum, total)}</div>
-            <div className="tombola-winner-name">
-              {ganador.participantes?.nombre_completo ?? 'Desconocido'}
-            </div>
-            {ganador.participantes?.telefono_whatsapp && (
-              <div className="tombola-winner-tel">{ganador.participantes.telefono_whatsapp}</div>
-            )}
-            <button className="btn btn-primary tombola-winner-btn" onClick={onCloseRef.current}>
-              Continuar
-            </button>
-          </div>
-        )}
-      </div>
-    </>
-  )
-}
-
-// ── Modal de importación CSV ──────────────────────────────────────────────────
-
-function ImportModal({ preview, importing, onConfirm, onClose }) {
-  const toImport = preview.filter(r => r._status === 'ok').length
-  const ocupados = preview.filter(r => r._status === 'ocupado').length
-  const vacios   = preview.filter(r => r._status === 'vacio' || r._status === 'no-existe').length
-
-  return (
-    <>
-      <div className="modal-overlay" onClick={!importing ? onClose : undefined} />
-      <div className="modal-dialog import-modal">
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '.75rem' }}>
-          <h3 style={{ margin: 0, fontSize: '1.05rem', fontWeight: 700 }}>Vista previa — Importar CSV</h3>
-          <button className="btn btn-icon" onClick={onClose} disabled={importing}><X size={16} /></button>
-        </div>
-
-        <div className="import-summary">
-          <span className="import-badge import-badge--ok">✓ {toImport} a importar</span>
-          {ocupados > 0 && <span className="import-badge import-badge--warn">{ocupados} ya ocupados</span>}
-          {vacios   > 0 && <span className="import-badge import-badge--gray">{vacios} sin nombre</span>}
-        </div>
-
-        <div className="import-table-wrap">
-          <table className="import-table">
-            <thead>
-              <tr>
-                <th>#</th><th>Nombre</th><th>Grupo</th><th>Pagado</th><th>Contacto</th><th>Fecha</th><th>Estado</th>
-              </tr>
-            </thead>
-            <tbody>
-              {preview.map((r, i) => (
-                <tr key={i} className={`import-row import-row--${r._status}`}>
-                  <td>{r._num || '—'}</td>
-                  <td>{r.nombre || <em style={{ opacity: .5 }}>—</em>}</td>
-                  <td>{r.grupo}</td>
-                  <td>{r.pagado}</td>
-                  <td>{r.contacto}</td>
-                  <td>{r.fecha}</td>
-                  <td>
-                    {r._status === 'ok'        && <span className="import-tag ok">Importar</span>}
-                    {r._status === 'ocupado'   && <span className="import-tag warn">Ocupado</span>}
-                    {r._status === 'vacio'     && <span className="import-tag gray">Vacío</span>}
-                    {r._status === 'no-existe' && <span className="import-tag gray">No existe</span>}
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
-
-        <div className="modal-actions" style={{ marginTop: '1rem' }}>
-          <button className="btn btn-outline" onClick={onClose} disabled={importing}>Cancelar</button>
-          <button
-            className="btn btn-primary"
-            onClick={onConfirm}
-            disabled={importing || toImport === 0}
-          >
-            {importing ? 'Importando…' : `Importar ${toImport} boleto${toImport !== 1 ? 's' : ''}`}
-          </button>
-        </div>
-      </div>
     </>
   )
 }
