@@ -39,3 +39,26 @@ export function csvEsc(v) {
     ? `"${s.replace(/"/g, '""')}"`
     : s
 }
+
+/**
+ * Genera y descarga un CSV con los boletos de una rifa.
+ * @param {Array}  boletos - Array de boletos
+ * @param {object} rifa    - Datos de la rifa (nombre_premio)
+ */
+export function exportarBoletos(boletos, rifa) {
+  const header = 'N\u00famero,Nombre,Grupo,Pagado,Contacto,Fecha'
+  const rows = boletos.map(b => [
+    b.numero_asignado,
+    b.nombre_completo ?? '',
+    '',
+    b.estatus === 'Liquidado' ? 'TRUE' : 'FALSE',
+    b.telefono_whatsapp ?? '',
+    b.fecha_apartado ? b.fecha_apartado.slice(0, 10) : '',
+  ].map(csvEsc).join(','))
+  const csv  = '\uFEFF' + [header, ...rows].join('\r\n')
+  const blob = new Blob([csv], { type: 'text/csv;charset=utf-8' })
+  const url  = URL.createObjectURL(blob)
+  const a    = document.createElement('a')
+  a.href = url; a.download = `${rifa.nombre_premio ?? 'rifa'}.csv`; a.click()
+  URL.revokeObjectURL(url)
+}

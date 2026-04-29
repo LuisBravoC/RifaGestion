@@ -19,7 +19,7 @@ import ErrorModal from '../components/ErrorModal.jsx'
 import { parseError } from '../lib/parseError.js'
 import TombolaModal from '../components/TombolaModal.jsx'
 import ImportModal from '../components/ImportModal.jsx'
-import { parseCSV, parseFechaCSV, csvEsc } from '../lib/csv-utils.js'
+import { parseCSV, parseFechaCSV, csvEsc, exportarBoletos } from '../lib/csv-utils.js'
 import { generarRifaPDF } from '../lib/rifaPdf.js'
 
 // ── Utilidades ──────────────────────────────────────────────────────────────
@@ -245,21 +245,7 @@ export default function BoletoGrid() {
 
   // ── Exportar CSV ───────────────────────────────────────────────────────────
   function handleExport() {
-    const header = 'Número,Nombre,Grupo,Pagado,Contacto,Fecha'
-    const rows = boletos.map(b => [
-      b.numero_asignado,
-      b.nombre_completo ?? '',
-      '',
-      b.estatus === 'Liquidado' ? 'TRUE' : 'FALSE',
-      b.telefono_whatsapp ?? '',
-      b.fecha_apartado ? b.fecha_apartado.slice(0, 10) : '',
-    ].map(csvEsc).join(','))
-    const csv  = '\uFEFF' + [header, ...rows].join('\r\n')
-    const blob = new Blob([csv], { type: 'text/csv;charset=utf-8' })
-    const url  = URL.createObjectURL(blob)
-    const a    = document.createElement('a')
-    a.href = url; a.download = `${rifa.nombre_premio ?? 'rifa'}.csv`; a.click()
-    URL.revokeObjectURL(url)
+    exportarBoletos(boletos, rifa)
   }
 
   // ── Importar CSV (preview) ─────────────────────────────────────────────────
