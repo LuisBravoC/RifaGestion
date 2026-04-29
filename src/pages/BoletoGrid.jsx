@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback, useRef } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
 import {
   Trophy, Search, Plus, X, CheckCircle2, Trash2,
@@ -12,6 +12,7 @@ import { fmt } from '../lib/formatters.js'
 import * as q from '../lib/rifas-queries.js'
 import Breadcrumbs from '../components/Breadcrumbs.jsx'
 import { useBreadcrumbs } from '../lib/useBreadcrumbs.js'
+import { useGanadores } from '../lib/useGanadores.js'
 import { useAuth } from '../lib/AuthContext.jsx'
 import ProgressBar from '../components/ProgressBar.jsx'
 import LoadingSpinner, { ErrorMsg } from '../components/LoadingSpinner.jsx'
@@ -79,40 +80,13 @@ export default function BoletoGrid() {
   function closePanel()       { setPanel(null) }
 
   // ── Ganadores ──────────────────────────────────────────────────────────────
-  const [ganadores,    setGanadores]    = useState([])  // boletos elegidos
-  const [tombola,       setTombola]       = useState(false)
-  const [ultimoGanador, setUltimoGanador] = useState(null)
+  const { ganadores, tombola, setTombola, ultimoGanador, handleElegirGanador, handleRemoveGanador, handleResetSorteo } = useGanadores(rifaId, rifaQ.data, showErr)
   const [viewMode,     setViewMode]     = useState('grid')  // 'grid' | 'list'
-  const ganadoresSeedRef = useRef(null)
   const fileInputRef    = useRef(null)
   const [importModal,   setImportModal]   = useState(null) // {preview, importing}
   const navigate = useNavigate()
 
   // ── Acción: Elegir ganador ─────────────────────────────────────────────────
-  async function handleElegirGanador() {
-    try {
-      const excluir = ganadores.map(g => g.id)
-      const winner  = await q.elegirGanador(rifaId, excluir)
-      if (!winner) { showErr('No hay boletos liquidados disponibles para el sorteo.'); return }
-      setUltimoGanador(winner)
-      const newGanadores = [...ganadores, winner]
-      setGanadores(newGanadores)
-      setTombola(true)
-      await q.saveGanadores(rifaId, newGanadores)
-    } catch (e) { showErr(e) }
-  }
-
-  async function handleRemoveGanador(ganadorId) {
-    const newGanadores = ganadores.filter(g => g.id !== ganadorId)
-    setGanadores(newGanadores)
-    try { await q.saveGanadores(rifaId, newGanadores) } catch (e) { showErr(e) }
-  }
-
-  async function handleResetSorteo() {
-    setGanadores([])
-    try { await q.saveGanadores(rifaId, []) } catch (e) { showErr(e) }
-  }
-
   // ── Generar PDF ──────────────────────────────────────────────────────────
   function handlePDF() {
     generarRifaPDF(rifa, boletos, stats, total)
@@ -153,10 +127,6 @@ export default function BoletoGrid() {
   useEffect(() => {
     if (rifaQ.data?.estatus === 'Activa') {
       q.vencerBoletosExpirados(rifaId, rifaQ.data.horas_expiracion).catch(() => {})
-    }
-    if (rifaQ.data && ganadoresSeedRef.current !== rifaId) {
-      ganadoresSeedRef.current = rifaId
-      setGanadores(rifaQ.data.ganadores ?? [])
     }
   }, [rifaId, rifaQ.data])
 
