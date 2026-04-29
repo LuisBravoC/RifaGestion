@@ -1,5 +1,5 @@
 import { Link, NavLink, useNavigate } from 'react-router-dom'
-import { Camera, Search, X, Settings, Building2, Package, BookImage, AlertCircle, LogOut, Menu, Ticket } from 'lucide-react'
+import { Camera, Search, X, Settings, Building2, Package, BookImage, AlertCircle, LogOut, Menu, Ticket, Users } from 'lucide-react'
 import { useState, useRef, useEffect, useCallback } from 'react'
 import { buscarAlumnos } from '../lib/queries.js'
 import { useAuth } from '../lib/AuthContext.jsx'
@@ -118,6 +118,9 @@ export default function Topbar() {
           <NavLink to="/rifas" className={({ isActive }) => 'topbar-nav-link' + (isActive ? ' active' : '')}>
             <Ticket size={15} /> <span className="nav-label">Rifas</span>
           </NavLink>
+          <NavLink to="/participantes" className={({ isActive }) => 'topbar-nav-link' + (isActive ? ' active' : '')}>
+            <Users size={15} /> <span className="nav-label">Participantes</span>
+          </NavLink>
           <NavLink to="/paquetes" className={({ isActive }) => 'topbar-nav-link' + (isActive ? ' active' : '')}>
             <BookImage size={15} /> <span className="nav-label">Paquetes</span>
           </NavLink>
@@ -150,6 +153,9 @@ export default function Topbar() {
             </NavLink>
             <NavLink to="/rifas" className={({ isActive }) => 'mobile-nav-link' + (isActive ? ' active' : '')} onClick={() => setMenuOpen(false)}>
               <Ticket size={16} /> Rifas
+            </NavLink>
+            <NavLink to="/participantes" className={({ isActive }) => 'mobile-nav-link' + (isActive ? ' active' : '')} onClick={() => setMenuOpen(false)}>
+              <Users size={16} /> Participantes
             </NavLink>
             <NavLink to="/paquetes" className={({ isActive }) => 'mobile-nav-link' + (isActive ? ' active' : '')} onClick={() => setMenuOpen(false)}>
               <BookImage size={16} /> Paquetes

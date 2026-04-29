@@ -206,9 +206,7 @@ export default function SorteosList() {
                 placeholder="o ingresa un número personalizado"
               />
               <div style={{ fontSize: '.78rem', color: 'var(--text-muted)', marginTop: '.2rem' }}>
-                {Number(form.cantidad_boletos) <= 100
-                  ? `Números: 00 – ${String(Number(form.cantidad_boletos) - 1).padStart(2, '0')}`
-                  : `Números: 1 – ${form.cantidad_boletos}`}
+                {`Números: ${String(1).padStart(String(Number(form.cantidad_boletos)).length, '0')} – ${form.cantidad_boletos}`}
               </div>
             </div>
           )}

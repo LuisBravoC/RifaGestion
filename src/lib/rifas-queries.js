@@ -138,8 +138,7 @@ export async function getRifasConResumen(campanaId) {
 
 /**
  * Crea la rifa y genera automáticamente sus boletos en la BD.
- * - ≤100 boletos: numeración 0–99 (estilo clásico "00-99")
- * - >100 boletos: numeración 1–N
+ * Numeración siempre 1–N.
  */
 export async function insertRifa(data) {
   const rifa = check(
@@ -156,11 +155,9 @@ export async function insertRifa(data) {
     'insertRifa'
   )
 
-  const n     = rifa.cantidad_boletos
-  const start = n <= 100 ? 0 : 1
-  const end   = n <= 100 ? n - 1 : n
-  const rows  = []
-  for (let i = start; i <= end; i++) {
+  const n    = rifa.cantidad_boletos
+  const rows = []
+  for (let i = 1; i <= n; i++) {
     rows.push({ rifa_id: rifa.id, numero_asignado: i, estatus: 'Disponible' })
   }
   // Insertar en lotes de 1000 para respetar límites de Supabase
@@ -237,7 +234,24 @@ export async function asignarBoleto(boletoId, participanteId, montoInicial) {
   }
 }
 
-export async function liquidarBoleto(boletoId) {
+/**
+ * Marca el boleto como Liquidado.
+ * Si aún hay saldo pendiente, inserta automáticamente un pago por el monto restante
+ * para que total_pagado = precio_boleto.
+ */
+export async function liquidarBoleto(boletoId, saldoPendiente = 0) {
+  const saldo = Number(saldoPendiente)
+  if (saldo > 0) {
+    check(
+      await supabase.from('historial_pagos_rifa').insert({
+        boleto_id:   boletoId,
+        monto:       saldo,
+        fecha:       new Date().toISOString().slice(0, 10),
+        metodo_pago: 'Liquidación directa',
+      }),
+      'liquidarBoleto:pago'
+    )
+  }
   check(
     await supabase.from('boletos').update({ estatus: 'Liquidado' }).eq('id', boletoId),
     'liquidarBoleto'
@@ -274,6 +288,79 @@ export async function vencerBoletosExpirados(rifaId, horasExpiracion) {
 // =============================================================================
 // PARTICIPANTES
 // =============================================================================
+
+/**
+ * Lista todos los participantes con un resumen de boletos agregado.
+ */
+export async function getParticipantes() {
+  const [partsRes, bolRes] = await Promise.all([
+    supabase.from('participantes').select('*').order('nombre_completo'),
+    supabase
+      .from('vista_saldo_boletos')
+      .select('participante_id, estatus, total_pagado, saldo_pendiente')
+      .not('participante_id', 'is', null),
+  ])
+  check(partsRes, 'getParticipantes:parts')
+  check(bolRes,   'getParticipantes:boletos')
+
+  const resMap = {}
+  for (const b of bolRes.data) {
+    const pid = b.participante_id
+    if (!resMap[pid]) resMap[pid] = { total: 0, liquidados: 0, apartados: 0, vencidos: 0, pagado: 0, pendiente: 0 }
+    resMap[pid].total++
+    if (b.estatus === 'Liquidado') resMap[pid].liquidados++
+    if (b.estatus === 'Apartado')  resMap[pid].apartados++
+    if (b.estatus === 'Vencido')   resMap[pid].vencidos++
+    resMap[pid].pagado    += Number(b.total_pagado)
+    resMap[pid].pendiente += Math.max(0, Number(b.saldo_pendiente))
+  }
+
+  const EMPTY = { total: 0, liquidados: 0, apartados: 0, vencidos: 0, pagado: 0, pendiente: 0 }
+  return partsRes.data.map(p => ({ ...p, resumen: resMap[p.id] ?? EMPTY }))
+}
+
+export async function getParticipante(id) {
+  return check(
+    await supabase.from('participantes').select('*').eq('id', id).single(),
+    'getParticipante'
+  )
+}
+
+/**
+ * Devuelve el participante + sus boletos activos agrupados por rifa.
+ */
+export async function getParticipanteConBoletos(id) {
+  const [partRes, bolRes] = await Promise.all([
+    supabase.from('participantes').select('*').eq('id', id).single(),
+    supabase
+      .from('vista_saldo_boletos')
+      .select('*')
+      .eq('participante_id', id)
+      .not('estatus', 'eq', 'Disponible')
+      .order('numero_asignado'),
+  ])
+  check(partRes, 'getParticipanteConBoletos:part')
+  check(bolRes,  'getParticipanteConBoletos:boletos')
+
+  // Agrupar boletos por rifa
+  const rifaMap = {}
+  for (const b of bolRes.data) {
+    if (!rifaMap[b.rifa_id]) {
+      rifaMap[b.rifa_id] = {
+        rifa_id:          b.rifa_id,
+        campana_id:       b.campana_id,
+        nombre_premio:    b.nombre_premio,
+        fecha_sorteo:     b.fecha_sorteo,
+        precio_boleto:    b.precio_boleto,
+        cantidad_boletos: b.cantidad_boletos,
+        boletos:          [],
+      }
+    }
+    rifaMap[b.rifa_id].boletos.push(b)
+  }
+
+  return { participante: partRes.data, rifas: Object.values(rifaMap) }
+}
 
 export async function insertParticipante(data) {
   return check(

@@ -181,7 +181,7 @@ export default function BoletoGrid() {
   async function handleLiquidar() {
     setSaving(true)
     try {
-      await q.liquidarBoleto(panel.boleto.id)
+      await q.liquidarBoleto(panel.boleto.id, panel.boleto.saldo_pendiente)
       toast(`Boleto #${fmtNum(panel.boleto.numero_asignado, rifaQ.data?.cantidad_boletos)} liquidado 🎉`)
       closePanel(); setRefresh(r => r + 1)
     } catch (e) { showErr(e) }

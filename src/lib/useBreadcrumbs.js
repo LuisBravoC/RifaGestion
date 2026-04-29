@@ -13,6 +13,8 @@ const SEGMENT_LABEL = {
   // Rifas
   rifas:         'Rifas',
   sorteos:       null,
+  // Participantes
+  participantes: 'Participantes',
 }
 
 /**

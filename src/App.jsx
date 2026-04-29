@@ -18,6 +18,8 @@ import Campanas from './pages/Campanas.jsx'
 import SorteosList from './pages/SorteosList.jsx'
 import BoletoGrid from './pages/BoletoGrid.jsx'
 import MisBoletos from './pages/MisBoletos.jsx'
+import ParticipantesList from './pages/ParticipantesList.jsx'
+import ParticipanteDetail from './pages/ParticipanteDetail.jsx'
 
 function AppShell() {
   const { session } = useAuth()
@@ -41,6 +43,10 @@ function AppShell() {
           <Route path="/rifas" element={<ProtectedRoute><Campanas /></ProtectedRoute>} />
           <Route path="/rifas/:campanaId" element={<ProtectedRoute><SorteosList /></ProtectedRoute>} />
           <Route path="/rifas/:campanaId/sorteos/:rifaId" element={<ProtectedRoute><BoletoGrid /></ProtectedRoute>} />
+
+          {/* Rutas protegidas — Participantes */}
+          <Route path="/participantes" element={<ProtectedRoute><ParticipantesList /></ProtectedRoute>} />
+          <Route path="/participantes/:partId" element={<ProtectedRoute><ParticipanteDetail /></ProtectedRoute>} />
 
           {/* Catch-all */}
           <Route path="*" element={<Navigate to="/" replace />} />

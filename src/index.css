@@ -2507,3 +2507,80 @@ html.google .stat-label {
   color: var(--text-muted);
 }
 .boleto-mini-historial { margin-top: .5rem; }
+
+/* -- Participantes -------------------------------------------------------- */
+
+/* Avatar circular con inicial */
+.part-avatar {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  background: linear-gradient(135deg, var(--accent), var(--liquidado));
+  color: #fff;
+  font-weight: 800;
+  font-size: .95rem;
+  flex-shrink: 0;
+}
+.part-avatar-lg {
+  width: 56px;
+  height: 56px;
+  font-size: 1.5rem;
+}
+
+/* Sección de rifa en el detalle de participante */
+.part-rifa-section {
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 1.1rem 1.25rem 1.25rem;
+  margin-bottom: 1rem;
+}
+.part-rifa-header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: .75rem;
+  margin-bottom: .5rem;
+  flex-wrap: wrap;
+}
+
+/* Lista de boletos de un participante */
+.part-boletos-list {
+  display: flex;
+  flex-direction: column;
+  gap: .4rem;
+  margin-top: .5rem;
+}
+
+.part-boleto-row {
+  display: flex;
+  align-items: center;
+  gap: .75rem;
+  padding: .55rem .85rem;
+  border-radius: .5rem;
+  border: 1px solid var(--border);
+  background: var(--bg);
+  font-size: .85rem;
+  flex-wrap: wrap;
+}
+.part-boleto-apartado  { border-left: 3px solid var(--abonado); }
+.part-boleto-liquidado { border-left: 3px solid var(--liquidado); }
+.part-boleto-vencido   { border-left: 3px solid var(--deuda); opacity: .8; }
+
+.part-boleto-num {
+  font-size: 1.1rem;
+  font-weight: 800;
+  min-width: 3rem;
+  flex-shrink: 0;
+}
+.part-boleto-pagos {
+  display: flex;
+  gap: .75rem;
+  font-size: .8rem;
+  color: var(--text-muted);
+  flex: 1;
+  flex-wrap: wrap;
+}
