@@ -41,6 +41,43 @@ export function csvEsc(v) {
 }
 
 /**
+ * Parsea un texto CSV y genera el array de preview para el modal de importación.
+ * @param {string} csvText  - Contenido del archivo CSV
+ * @param {Array}  boletos  - Boletos existentes de la rifa
+ * @returns {Array} preview - Filas con _num y _status ('ok'|'vacio'|'no-existe'|'ocupado')
+ */
+export function buildImportPreview(csvText, boletos) {
+  const rows = parseCSV(csvText)
+  return rows.map(r => {
+    const num    = Number(r['numero'] || r['n\u00famero'] || r['#'] || '')
+    const nombre = (r['nombre'] ?? '').trim()
+    const boleto = boletos.find(b => b.numero_asignado === num)
+    let status = 'ok'
+    if (!nombre)                              status = 'vacio'
+    else if (!boleto)                         status = 'no-existe'
+    else if (boleto.estatus !== 'Disponible') status = 'ocupado'
+    return { ...r, _num: num, _status: status }
+  })
+}
+
+/**
+ * Convierte las filas OK del preview al formato que espera importarBoletos().
+ * @param {Array} preview - Array devuelto por buildImportPreview
+ * @returns {Array} filas
+ */
+export function previewToFilas(preview) {
+  return preview
+    .filter(r => r._status === 'ok')
+    .map(r => ({
+      numero:   r._num,
+      nombre:   (r['nombre'] ?? '').trim(),
+      contacto: (r['contacto'] ?? '').trim(),
+      pagado:   (r['pagado'] ?? '').toUpperCase() === 'TRUE',
+      fecha:    parseFechaCSV(r['fecha'] ?? ''),
+    }))
+}
+
+/**
  * Genera y descarga un CSV con los boletos de una rifa.
  * @param {Array}  boletos - Array de boletos
  * @param {object} rifa    - Datos de la rifa (nombre_premio)

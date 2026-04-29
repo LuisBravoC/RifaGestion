@@ -19,7 +19,7 @@ import ErrorModal from '../components/ErrorModal.jsx'
 import { parseError } from '../lib/parseError.js'
 import TombolaModal from '../components/TombolaModal.jsx'
 import ImportModal from '../components/ImportModal.jsx'
-import { parseCSV, parseFechaCSV, csvEsc, exportarBoletos } from '../lib/csv-utils.js'
+import { parseCSV, parseFechaCSV, csvEsc, exportarBoletos, buildImportPreview, previewToFilas } from '../lib/csv-utils.js'
 import { generarRifaPDF } from '../lib/rifaPdf.js'
 
 // ── Utilidades ──────────────────────────────────────────────────────────────
@@ -254,18 +254,7 @@ export default function BoletoGrid() {
     if (!file) return
     const reader = new FileReader()
     reader.onload = ev => {
-      const rows = parseCSV(ev.target.result)
-      const preview = rows.map(r => {
-        const num    = Number(r['numero'] || r['n\u00famero'] || r['#'] || '')
-        const nombre = (r['nombre'] ?? '').trim()
-        const boleto = boletos.find(b => b.numero_asignado === num)
-        let status = 'ok'
-        if (!nombre)                                  status = 'vacio'
-        else if (!boleto)                             status = 'no-existe'
-        else if (boleto.estatus !== 'Disponible')     status = 'ocupado'
-        return { ...r, _num: num, _status: status }
-      })
-      setImportModal({ preview, importing: false })
+      setImportModal({ preview: buildImportPreview(ev.target.result, boletos), importing: false })
     }
     reader.readAsText(file, 'utf-8')
     e.target.value = ''
@@ -275,15 +264,7 @@ export default function BoletoGrid() {
   async function handleConfirmImport() {
     setImportModal(m => ({ ...m, importing: true }))
     try {
-      const filas = importModal.preview
-        .filter(r => r._status === 'ok')
-        .map(r => ({
-          numero:   r._num,
-          nombre:   (r['nombre'] ?? '').trim(),
-          contacto: (r['contacto'] ?? '').trim(),
-          pagado:   (r['pagado'] ?? '').toUpperCase() === 'TRUE',
-          fecha:    parseFechaCSV(r['fecha'] ?? ''),
-        }))
+      const filas = previewToFilas(importModal.preview)
       const { importados, saltados } = await q.importarBoletos(
         rifaId, filas, rifa.precio_boleto
       )
