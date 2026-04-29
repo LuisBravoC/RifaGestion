@@ -2,7 +2,7 @@ import { useState, useCallback, useRef } from 'react'
 import { useNavigate } from 'react-router-dom'
 import {
   Search, Plus, X, CheckCircle2, Trash2,
-  MessageCircle, Zap, Clock, UserPlus, ArrowRight,
+  MessageCircle, Zap, Clock, UserPlus, ArrowRight, RotateCcw,
 } from 'lucide-react'
 import { fmt, fmtNum, fmtDate, today } from '../lib/formatters.js'
 import * as q from '../lib/rifas-queries.js'
@@ -159,6 +159,19 @@ export default function BoletoPanel({ boleto: boletoInicial, rifa, total, isAdmi
       await q.liberarBoleto(boleto.id)
       toast('Boleto liberado y disponible nuevamente')
       onDone()
+    } catch (e) { showErr(e) }
+    finally { setSaving(false) }
+  }
+
+  async function handleReactivar() {
+    setSaving(true)
+    try {
+      const nuevaFecha = new Date().toISOString()
+      await q.revertirApartado(boleto.id)
+      // Actualizar estado local directamente — sin segundo round-trip a BD
+      setBoleto(prev => ({ ...prev, estatus: 'Apartado', fecha_apartado: nuevaFecha }))
+      toast('Boleto reactivado como Apartado')
+      onDone({ noClose: true })
     } catch (e) { showErr(e) }
     finally { setSaving(false) }
   }
@@ -423,6 +436,11 @@ export default function BoletoPanel({ boleto: boletoInicial, rifa, total, isAdmi
                   {(estatusEfectivo === 'Apartado' || estatusEfectivo === 'Vencido') && (
                     <button className="btn btn-primary" onClick={handleLiquidar} disabled={saving}>
                       <CheckCircle2 size={15} /> Marcar como liquidado
+                    </button>
+                  )}
+                  {estatusEfectivo === 'Vencido' && (
+                    <button className="btn btn-outline" onClick={handleReactivar} disabled={saving}>
+                      <RotateCcw size={14} /> Reactivar boleto
                     </button>
                   )}
                   {!confirmLib ? (

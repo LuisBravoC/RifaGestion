@@ -267,7 +267,10 @@ export async function liquidarBoleto(boletoId, saldoPendiente = 0) {
 
 export async function revertirApartado(boletoId) {
   return check(
-    await supabase.from('boletos').update({ estatus: 'Apartado' }).eq('id', boletoId),
+    await supabase.from('boletos').update({
+      estatus:        'Apartado',
+      fecha_apartado: new Date().toISOString(), // reinicia el contador de caducidad
+    }).eq('id', boletoId),
     'revertirApartado'
   )
 }
@@ -563,6 +566,10 @@ export async function importarBoletos(rifaId, filas, precioBoleto) {
   const conNombre = filas.filter(f => f.nombre?.trim())
   if (conNombre.length === 0) return { importados: 0, saltados: 0 }
 
+  // Normaliza un nombre para comparación: minúsculas + sin acentos
+  const normalize = s => s.trim().toLowerCase()
+    .normalize('NFD').replace(/[\u0300-\u036f]/g, '')
+
   // 1. Obtener todos los boletos de la rifa (para mapear numero → id/estatus)
   const { data: boletosList } = await supabase
     .from('boletos')
@@ -575,15 +582,17 @@ export async function importarBoletos(rifaId, filas, precioBoleto) {
   // 2. Nombres únicos normalizados
   const uniqueNames = [...new Set(conNombre.map(f => f.nombre.trim()))]
 
-  // 3. Buscar participantes existentes por nombre exacto
+  // 3. Buscar participantes existentes (case-insensitive mediante ilike por nombre normalizado)
   const { data: existing } = await supabase
     .from('participantes')
     .select('id, nombre_completo')
     .in('nombre_completo', uniqueNames)
-  const partMap = Object.fromEntries((existing ?? []).map(p => [p.nombre_completo, p.id]))
+  // Mapa normalizado → id (evita duplicados por mayúsculas o acentos)
+  const partMap = {}
+  for (const p of existing ?? []) partMap[normalize(p.nombre_completo)] = p.id
 
-  // 4. Crear participantes faltantes
-  const missing = uniqueNames.filter(n => !partMap[n])
+  // 4. Crear participantes faltantes (solo los que no existen ni normalizado)
+  const missing = uniqueNames.filter(n => !partMap[normalize(n)])
   if (missing.length > 0) {
     const toInsert = missing.map(nombre => {
       const fila = conNombre.find(f => f.nombre.trim() === nombre)
@@ -594,7 +603,7 @@ export async function importarBoletos(rifaId, filas, precioBoleto) {
     })
     const { data: created } = await supabase
       .from('participantes').insert(toInsert).select('id, nombre_completo')
-    for (const p of created ?? []) partMap[p.nombre_completo] = p.id
+    for (const p of created ?? []) partMap[normalize(p.nombre_completo)] = p.id
   }
 
   // 5. Actualizar boletos y recopilar pagos a insertar
@@ -604,7 +613,7 @@ export async function importarBoletos(rifaId, filas, precioBoleto) {
   for (const fila of conNombre) {
     const boleto = boletoMap[fila.numero]
     if (!boleto || boleto.estatus !== 'Disponible') { saltados++; continue }
-    const pid = partMap[fila.nombre.trim()]
+    const pid = partMap[normalize(fila.nombre.trim())]
     if (!pid) { saltados++; continue }
 
     const estatus = fila.pagado ? 'Liquidado' : 'Apartado'
