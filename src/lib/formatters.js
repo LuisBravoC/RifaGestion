@@ -12,3 +12,18 @@ export function fmtDate(d) {
 }
 
 export const today = () => new Date().toISOString().slice(0, 10)
+
+/**
+ * Normaliza un número de teléfono mexicano:
+ * - Elimina espacios, guiones, paréntesis y cualquier carácter no numérico.
+ * - Quita el código de país si está presente (+52 / 52 / 521).
+ * - Devuelve los últimos 10 dígitos.
+ */
+export function normalizePhone(raw) {
+  if (!raw) return ''
+  let digits = String(raw).replace(/\D/g, '')
+  if (digits.length === 13 && digits.startsWith('521')) digits = digits.slice(3)
+  else if (digits.length === 12 && digits.startsWith('52')) digits = digits.slice(2)
+  else if (digits.length === 11 && digits.startsWith('1'))  digits = digits.slice(1)
+  return digits.slice(-10)
+}

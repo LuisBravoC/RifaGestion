@@ -1,30 +1,60 @@
-import { useState } from 'react'
-import { Link } from 'react-router-dom'
-import { Ticket, Search, Phone, CheckCircle2, Clock, AlertCircle } from 'lucide-react'
-import { fmt, fmtNum, fmtDate } from '../lib/formatters.js'
+import { useState, useEffect } from 'react'
+import { Link, useSearchParams } from 'react-router-dom'
+import { Ticket, Search, Phone, CheckCircle2, Clock, AlertCircle, Share2, Copy } from 'lucide-react'
+import { fmt, fmtNum, fmtDate, normalizePhone } from '../lib/formatters.js'
 import { getMisBoletos } from '../lib/rifas-queries.js'
 import ProgressBar from '../components/ProgressBar.jsx'
 import StatusBadge from '../components/StatusBadge.jsx'
 
 export default function MisBoletos() {
-  const [telefono,  setTelefono]  = useState('')
+  const [searchParams] = useSearchParams()
+  const [telefono,  setTelefono]  = useState(() => { const t = searchParams.get('tel') ?? ''; return normalizePhone(t) || t })
   const [buscado,   setBuscado]   = useState(false)
   const [loading,   setLoading]   = useState(false)
-  const [resultado, setResultado] = useState(null)  // { participante, boletos } | null
+  const [resultado, setResultado] = useState(null)
   const [error,     setError]     = useState(null)
+  const [copied,    setCopied]    = useState(false)
 
-  async function handleBuscar(e) {
-    e.preventDefault()
-    if (!telefono.trim()) return
+  // Auto-buscar si llega con ?tel= en la URL
+  useEffect(() => {
+    const tel = searchParams.get('tel')
+    if (tel) {
+      const norm = normalizePhone(tel) || tel
+      setTelefono(norm)
+      buscar(norm)
+    }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [])
+
+  async function buscar(tel) {
+    if (!tel?.trim()) return
     setLoading(true); setError(null); setBuscado(false)
     try {
-      const r = await getMisBoletos(telefono.trim())
+      const r = await getMisBoletos(tel.trim())
       setResultado(r)
       setBuscado(true)
-    } catch (err) {
+    } catch {
       setError('Ocurrió un error al buscar. Verifica tu conexión e intenta de nuevo.')
     } finally {
       setLoading(false)
+    }
+  }
+
+  async function handleBuscar(e) {
+    e.preventDefault()
+    await buscar(telefono)
+  }
+
+  async function handleCompartir() {
+    const norm = normalizePhone(telefono) || telefono.trim()
+    const base = import.meta.env.BASE_URL.replace(/\/$/, '')
+    const url  = `${window.location.origin}${base}/mis-boletos?tel=${encodeURIComponent(norm)}`
+    if (navigator.share) {
+      await navigator.share({ title: 'Mis boletos', text: 'Consulta tus boletos:', url })
+    } else {
+      await navigator.clipboard.writeText(url)
+      setCopied(true)
+      setTimeout(() => setCopied(false), 2500)
     }
   }
 
@@ -95,6 +125,20 @@ export default function MisBoletos() {
               <div className="mis-boletos-bienvenida">
                 <CheckCircle2 size={18} style={{ color: 'var(--liquidado)' }} />
                 <span>¡Hola, <strong>{resultado.participante.nombre_completo}</strong>!</span>
+                <button
+                  onClick={handleCompartir}
+                  title={copied ? '¡Enlace copiado!' : 'Compartir mi enlace'}
+                  style={{
+                    marginLeft: 'auto', display: 'inline-flex', alignItems: 'center', gap: '.3rem',
+                    background: 'none', border: '1px solid var(--border)', borderRadius: 'var(--radius)',
+                    padding: '.25rem .6rem', cursor: 'pointer', fontSize: '.78rem',
+                    color: copied ? 'var(--liquidado)' : 'var(--accent-light)',
+                    transition: 'color .2s',
+                  }}
+                >
+                  {copied ? <Copy size={13} /> : <Share2 size={13} />}
+                  {copied ? '¡Copiado!' : 'Compartir'}
+                </button>
               </div>
 
               {resultado.boletos.length === 0 ? (

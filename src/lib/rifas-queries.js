@@ -568,10 +568,13 @@ export async function elegirGanador(rifaId, excluirIds = []) {
 export async function getMisBoletos(telefono) {
   if (!telefono?.trim()) return { participante: null, boletos: [] }
 
+  const { normalizePhone } = await import('./formatters.js')
+  const tel = normalizePhone(telefono) || telefono.trim()
+
   const { data: parts } = await supabase
     .from('participantes')
     .select('id, nombre_completo, email')
-    .eq('telefono_whatsapp', telefono.trim())
+    .eq('telefono_whatsapp', tel)
     .limit(1)
 
   if (!parts?.length) return { participante: null, boletos: [] }
