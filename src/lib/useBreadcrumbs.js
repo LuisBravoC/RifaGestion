@@ -2,18 +2,9 @@ import { useLocation, useParams } from 'react-router-dom'
 
 // Static path segments → display label.  null = hidden connector segment.
 const SEGMENT_LABEL = {
-  instituciones: 'Instituciones',
-  proyectos:     null,
-  grupos:        null,
-  alumnos:       null,
-  ajustes:       'Ajustes',
-  paquetes:      'Paquetes',
-  deudas:        'Deudas pendientes',
   opciones:      'Opciones',
-  // Rifas
   rifas:         'Rifas',
   sorteos:       null,
-  // Participantes
   participantes: 'Participantes',
 }
 

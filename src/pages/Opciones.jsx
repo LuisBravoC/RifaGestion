@@ -109,7 +109,7 @@ export default function Opciones() {
 
           {/* Notificaciones */}
           <OptionGroup title="Notificaciones">
-            <OptionSection icon={Bell}  title="Alertas de deuda"    description="Avisar cuando un alumno supere X días sin pago"  badge="Próximamente" />
+            <OptionSection icon={Bell}  title="Notificaciones de sorteo"    description="Avisar sobre boletos vencidos o ganadores pendientes"  badge="Próximamente" />
           </OptionGroup>
 
           {/* Acerca de */}
@@ -117,8 +117,8 @@ export default function Opciones() {
             <div className="opciones-item">
               <div className="opciones-item-icon"><Info size={18} /></div>
               <div className="opciones-item-body">
-                <span className="opciones-item-label">FotoGestión</span>
-                <span className="opciones-item-desc">Versión 1.0 · Gestión de pagos fotográficos</span>
+                <span className="opciones-item-label">RifaGestión</span>
+                <span className="opciones-item-desc">Versión 1.0 · Gestión de rifas y sorteos</span>
               </div>
             </div>
           </OptionGroup>
