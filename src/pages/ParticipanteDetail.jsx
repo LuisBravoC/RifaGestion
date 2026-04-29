@@ -117,7 +117,20 @@ export default function ParticipanteDetail() {
 
   if (loading) return <><Breadcrumbs crumbs={crumbs} /><LoadingSpinner text="Cargando perfil…" /></>
   if (error)   return <ErrorMsg message={error} />
-  if (!data?.participante) return <ErrorMsg message="Participante no encontrado" />
+  if (!data?.participante) return (
+    <>
+      <Breadcrumbs crumbs={crumbs} />
+      <div className="page">
+        <div className="empty" style={{ marginTop: '3rem' }}>
+          <Users size={48} style={{ opacity: .2 }} />
+          <p style={{ marginTop: '1rem', fontWeight: 700 }}>Participante no encontrado</p>
+          <p style={{ fontSize: '.88rem', color: 'var(--text-muted)', marginTop: '.35rem' }}>
+            Es posible que haya sido eliminado del sistema.
+          </p>
+        </div>
+      </div>
+    </>
+  )
 
   const { participante: p, rifas } = data
 

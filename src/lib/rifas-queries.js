@@ -341,10 +341,11 @@ export async function getParticipante(id) {
 
 /**
  * Devuelve el participante + sus boletos activos agrupados por rifa.
+ * Devuelve { participante: null, rifas: [] } si el participante no existe.
  */
 export async function getParticipanteConBoletos(id) {
   const [partRes, bolRes] = await Promise.all([
-    supabase.from('participantes').select('*').eq('id', id).single(),
+    supabase.from('participantes').select('*').eq('id', id).maybeSingle(),
     supabase
       .from('vista_saldo_boletos')
       .select('*')
@@ -354,6 +355,8 @@ export async function getParticipanteConBoletos(id) {
   ])
   check(partRes, 'getParticipanteConBoletos:part')
   check(bolRes,  'getParticipanteConBoletos:boletos')
+
+  if (!partRes.data) return { participante: null, rifas: [] }
 
   // Agrupar boletos por rifa
   const rifaMap = {}
@@ -403,7 +406,18 @@ export async function buscarParticipantes(query) {
   return data ?? []
 }
 
+/**
+ * Elimina un participante.
+ * Antes libera sus boletos Apartados (los pone Disponible) porque no hay pago real.
+ * Los boletos Liquidados quedan con participante_id = NULL (el pago ya fue recibido).
+ */
 export async function deleteParticipante(id) {
+  // Liberar boletos apartados
+  await supabase
+    .from('boletos')
+    .update({ participante_id: null, estatus: 'Disponible', fecha_apartado: null })
+    .eq('participante_id', id)
+    .eq('estatus', 'Apartado')
   return check(
     await supabase.from('participantes').delete().eq('id', id),
     'deleteParticipante'
