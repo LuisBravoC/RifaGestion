@@ -24,6 +24,7 @@ import TombolaModal from '../components/TombolaModal.jsx'
 import ImportModal from '../components/ImportModal.jsx'
 import { parseCSV, parseFechaCSV, csvEsc, exportarBoletos, buildImportPreview, previewToFilas } from '../lib/csv-utils.js'
 import { generarRifaPDF } from '../lib/rifaPdf.js'
+import StatusBadge from '../components/StatusBadge.jsx'
 
 // ── Componente principal ─────────────────────────────────────────────────────
 
@@ -48,6 +49,8 @@ export default function BoletoGrid() {
   // ── Ganadores ──────────────────────────────────────────────────────────────
   const { ganadores, tombola, handleTombolaClose, ultimoGanador, handleElegirGanador, handleRemoveGanador, handleResetSorteo } = useGanadores(rifaId, rifaQ.data, showErr)
   const [viewMode,     setViewMode]     = useState('grid')  // 'grid' | 'list'
+  const [filterStatus, setFilterStatus] = useState(null)    // null = Todos
+  const [searchNum,    setSearchNum]    = useState('')
   const fileInputRef    = useRef(null)
   const [importModal,   setImportModal]   = useState(null) // {preview, importing}
   const navigate = useNavigate()
@@ -123,6 +126,15 @@ export default function BoletoGrid() {
     [boletos]
   )
 
+  // Boletos filtrados por estatus y búsqueda de número
+  const boletosVisible = useMemo(() => {
+    let list = boletos
+    if (filterStatus) list = list.filter(b => b.estatus === filterStatus)
+    const q = searchNum.trim()
+    if (q)            list = list.filter(b => String(b.numero_asignado).includes(q))
+    return list
+  }, [boletos, filterStatus, searchNum])
+
   if (campanaQ.loading || rifaQ.loading || boletosQ.loading)
     return <><Breadcrumbs crumbs={crumbs} /><LoadingSpinner text="Cargando cuadrícula…" /></>
   if (!rifa) return <ErrorMsg message="Rifa no encontrada" />
@@ -197,15 +209,51 @@ export default function BoletoGrid() {
 
         <ProgressBar value={stats.recaudado} max={meta} />
 
-        {/* ── Leyenda + toggle de vista ── */}
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '.5rem', margin: '.85rem 0 .75rem' }}>
-          <div className="boleto-leyenda" style={{ margin: 0 }}>
-            <span className="boleto-leyenda-item"><span className="dot dot-disponible" />Libre</span>
-            <span className="boleto-leyenda-item"><span className="dot dot-apartado" />Apartado</span>
-            <span className="boleto-leyenda-item"><span className="dot dot-liquidado" />Pagados</span>
-            {stats.Vencido > 0 && (
-              <span className="boleto-leyenda-item"><span className="dot dot-vencido" />Vencido ({stats.Vencido})</span>
-            )}
+        {/* ── Leyenda ── */}
+        <div className="boleto-leyenda" style={{ margin: '.85rem 0 .5rem' }}>
+          <span className="boleto-leyenda-item"><span className="dot dot-disponible" />Libre</span>
+          <span className="boleto-leyenda-item"><span className="dot dot-apartado" />Apartado</span>
+          <span className="boleto-leyenda-item"><span className="dot dot-liquidado" />Pagado</span>
+          {stats.Vencido > 0 && (
+            <span className="boleto-leyenda-item"><span className="dot dot-vencido" />Vencido ({stats.Vencido})</span>
+          )}
+        </div>
+
+        {/* ── Filtros + búsqueda + toggle de vista ── */}
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '.5rem', margin: '0 0 .75rem' }}>
+          {/* Chips de filtro por estatus */}
+          <div style={{ display: 'flex', gap: '.4rem', flexWrap: 'wrap', alignItems: 'center' }}>
+            {[null, 'Disponible', 'Apartado', 'Liquidado', 'Vencido'].map(s => {
+              const active = filterStatus === s
+              const count  = s ? (stats[s] ?? 0) : boletos.length
+              if (s === 'Vencido' && stats.Vencido === 0) return null
+              return (
+                <button
+                  key={s ?? 'todos'}
+                  className={`btn btn-sm ${active ? 'btn-primary' : 'btn-outline'}`}
+                  onClick={() => setFilterStatus(active ? null : s)}
+                >
+                  {s ?? 'Todos'} <span style={{ opacity: .65 }}>({count})</span>
+                </button>
+              )
+            })}
+            {/* Búsqueda por número */}
+            <div style={{ position: 'relative', display: 'flex', alignItems: 'center' }}>
+              <Search size={14} style={{ position: 'absolute', left: '.6rem', color: 'var(--text-muted)', pointerEvents: 'none' }} />
+              <input
+                type="text" inputMode="numeric" pattern="[0-9]*" placeholder="Buscar Nº"
+                value={searchNum}
+                onChange={e => setSearchNum(e.target.value)}
+                className="input-search-num"
+                style={{ paddingLeft: '2rem', paddingRight: searchNum ? '1.8rem' : '.75rem', height: '2.1rem', width: '8.5rem', fontSize: '.875rem', borderRadius: 'var(--radius)', border: '1px solid var(--border)', background: 'var(--bg)', color: 'var(--text)' }}
+              />
+              {searchNum && (
+                <button
+                  onClick={() => setSearchNum('')}
+                  style={{ position: 'absolute', right: '.5rem', background: 'none', border: 'none', cursor: 'pointer', color: 'var(--text-muted)', padding: 0, lineHeight: 1, display: 'flex' }}
+                ><X size={13} /></button>
+              )}
+            </div>
           </div>
           <div style={{ display: 'flex', gap: '.3rem' }}>
             <button
@@ -228,7 +276,7 @@ export default function BoletoGrid() {
         {/* ── Vista cuadrícula o lista ── */}
         {viewMode === 'grid' ? (
           <div className="boleto-grid">
-            {boletos.map(b => {
+            {boletosVisible.map(b => {
               const esGanador = ganadores.some(g => g.id === b.id)
               return (
                 <button
@@ -252,7 +300,7 @@ export default function BoletoGrid() {
           </div>
         ) : (
           <div className="boleto-list">
-            {boletos.map(b => {
+            {boletosVisible.map(b => {
               const esGanador = ganadores.some(g => g.id === b.id)
               return (
                 <div
@@ -269,13 +317,7 @@ export default function BoletoGrid() {
                     {b.nombre_completo ?? <em style={{ color: 'var(--text-muted)', fontStyle: 'normal', opacity: .55 }}>Disponible</em>}
                   </span>
                   {b.estatus !== 'Disponible' && (
-                    <span className={`badge badge-${
-                      b.estatus === 'Liquidado' ? 'liquidado'
-                        : b.estatus === 'Apartado' ? 'abonado'
-                        : 'deuda'
-                    }`} style={{ fontSize: '.7rem', flexShrink: 0 }}>
-                      {b.estatus}
-                    </span>
+                    <StatusBadge status={b.estatus} style={{ fontSize: '.7rem', flexShrink: 0 }} />
                   )}
                   {Number(b.total_pagado) > 0 && (
                     <span style={{ fontSize: '.8rem', color: 'var(--liquidado)', flexShrink: 0 }}>{fmt(b.total_pagado)}</span>
