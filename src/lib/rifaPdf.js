@@ -20,17 +20,17 @@ export function generarRifaPDF(rifa, boletos, stats, total) {
   const digits = total <= 100 ? 2 : String(total).length
   const pad    = n => String(n).padStart(digits, '0')
 
-  const COLS   = 10
-  const tomados = stats.Apartado + stats.Liquidado
-  const pct    = total > 0 ? Math.round((tomados / total) * 100) : 0
+  const COLS     = 10
+  const tomados   = (stats.Apartado ?? 0) + (stats.Liquidado ?? 0)
+  const pct       = total > 0 ? Math.round((tomados / total) * 100) : 0
 
   const cells = boletos.map(b => {
-    const disp    = b.estatus === 'Disponible'
-    const bg      = disp ? '#ffffff' : '#1e293b'
-    const color   = disp ? '#1e293b' : '#94a3b8'
-    const border  = disp ? '2px solid #6366f1' : '2px solid transparent'
-    const name    = b.nombre_completo ?? ''
-    const initial = name ? name.charAt(0).toUpperCase() : ''
+    const disp   = b.estatus === 'Disponible'
+    const bg     = disp ? '#ffffff' : '#1e293b'
+    const color  = disp ? '#1e293b' : '#94a3b8'
+    const border = disp ? '2px solid #6366f1' : '2px solid transparent'
+    const name     = b.nombre_completo ?? ''
+    const initial  = name ? name.charAt(0).toUpperCase() : ''
     return `<div class="cell" style="background:${bg};color:${color};border:${border};" title="${name}">
       <span class="num">${pad(b.numero_asignado)}</span>
       ${!disp && initial ? `<span class="ini">${initial}</span>` : ''}
@@ -98,13 +98,13 @@ export function generarRifaPDF(rifa, boletos, stats, total) {
 
 <div class="stats">
   <div class="stat"><div class="stat-val val-disp">${stats.Disponible}</div><div class="stat-lbl">Disponibles</div></div>
-  <div class="stat"><div class="stat-val val-tom">${tomados}</div><div class="stat-lbl">Tomados</div></div>
+  <div class="stat"><div class="stat-val val-tom">${tomados}</div><div class="stat-lbl">Apartados</div></div>
   <div class="stat"><div class="stat-val" style="color:#f1f5f9">${total}</div><div class="stat-lbl">Total boletos</div></div>
 </div>
 
 <div class="prog-wrap">
   <div class="prog-bar"><div class="prog-fill" style="width:${pct}%"></div></div>
-  <div class="prog-meta"><span>${pct}% tomados</span><span>${stats.Disponible} boletos libres de ${total}</span></div>
+  <div class="prog-meta"><span>${pct}% Apartados</span><span>${stats.Disponible} boletos libres de ${total}</span></div>
 </div>
 
 <div class="section-label">Cuadr\u00edcula de boletos</div>
@@ -112,7 +112,7 @@ export function generarRifaPDF(rifa, boletos, stats, total) {
 
 <div class="legend">
   <div class="leg-item"><div class="dot" style="background:#ffffff;border:2px solid #6366f1"></div>Disponible</div>
-  <div class="leg-item"><div class="dot" style="background:#1e293b;border:2px solid #334155"></div>Tomado</div>
+  <div class="leg-item"><div class="dot" style="background:#1e293b;border:2px solid #334155"></div>No disponible</div>
 </div>
 
 <div class="footer">

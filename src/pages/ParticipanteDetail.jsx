@@ -34,7 +34,7 @@ function fmtDate(d) {
 
 const STATUS_INFO = {
   Apartado:  { label: '🟡 Apartado',  cls: 'badge-abonado',   icon: Clock },
-  Liquidado: { label: '🟢 Liquidado', cls: 'badge-liquidado', icon: CheckCircle2 },
+  Liquidado: { label: '🟢 Pagado', cls: 'badge-liquidado', icon: CheckCircle2 },
   Vencido:   { label: '🔴 Vencido',   cls: 'badge-deuda',     icon: AlertCircle },
 }
 
@@ -208,7 +208,7 @@ export default function ParticipanteDetail() {
             </div>
             <div className="card stat-card">
               <div className="stat-value" style={{ color: 'var(--liquidado)' }}>{globalStats.liquidados}</div>
-              <div className="stat-label">Liquidados</div>
+              <div className="stat-label">Pagados</div>
             </div>
             <div className="card stat-card">
               <div className="stat-value cobrado">{fmt(globalStats.pagado)}</div>
@@ -402,7 +402,7 @@ function RifaSection({ rifa, isAdmin, onPagar, onLiquidar }) {
             <span>Pagado: <strong style={{ color: 'var(--liquidado)' }}>{fmt(pagado)}</strong></span>
             {pendiente > 0
               ? <span>Falta: <strong style={{ color: 'var(--abonado)' }}>{fmt(pendiente)}</strong></span>
-              : <span style={{ color: 'var(--liquidado)' }}>✓ Todo liquidado</span>
+              : <span style={{ color: 'var(--liquidado)' }}>✓ Todo pagado</span>
             }
           </div>
           <ProgressBar value={pagado} max={meta} />

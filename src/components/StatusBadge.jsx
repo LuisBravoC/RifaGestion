@@ -1,4 +1,4 @@
-const STATUS_LABEL = { deuda: '🔴 Deuda', abonado: '🟡 Abonado', liquidado: '🟢 Liquidado' }
+const STATUS_LABEL = { deuda: '🔴 Deuda', abonado: '🟡 Abonado', liquidado: '🟢 Pagado' }
 
 export default function StatusBadge({ status }) {
   return (

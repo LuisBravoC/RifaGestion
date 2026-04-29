@@ -213,7 +213,7 @@ export default function BoletoGrid() {
           </div>
           <div className="card stat-card">
             <div className="stat-value" style={{ color: 'var(--liquidado)' }}>{stats.Liquidado}</div>
-            <div className="stat-label">Liquidados</div>
+            <div className="stat-label">Pagados</div>
           </div>
           <div className="card stat-card">
             <div className="stat-value" style={{ color: 'var(--accent-light)' }}>{fmt(stats.recaudado)}</div>
@@ -228,7 +228,7 @@ export default function BoletoGrid() {
           <div className="boleto-leyenda" style={{ margin: 0 }}>
             <span className="boleto-leyenda-item"><span className="dot dot-disponible" />Libre</span>
             <span className="boleto-leyenda-item"><span className="dot dot-apartado" />Apartado</span>
-            <span className="boleto-leyenda-item"><span className="dot dot-liquidado" />Liquidado</span>
+            <span className="boleto-leyenda-item"><span className="dot dot-liquidado" />Pagados</span>
             {stats.Vencido > 0 && (
               <span className="boleto-leyenda-item"><span className="dot dot-vencido" />Vencido ({stats.Vencido})</span>
             )}

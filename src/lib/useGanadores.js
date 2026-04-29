@@ -26,7 +26,7 @@ export function useGanadores(rifaId, rifaData, showErr) {
     try {
       const excluir = ganadores.map(g => g.id)
       const winner  = await q.elegirGanador(rifaId, excluir)
-      if (!winner) { showErr('No hay boletos liquidados disponibles para el sorteo.'); return }
+      if (!winner) { showErr('No hay boletos pagados disponibles para el sorteo.'); return }
       setUltimoGanador(winner)
       setTombola(true)
       // Guardar en BD pero NO añadir a la lista hasta que el usuario cierre la ruleta

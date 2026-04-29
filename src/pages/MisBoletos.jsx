@@ -19,7 +19,7 @@ function fmtDate(d) {
 
 const STATUS_INFO = {
   Apartado:  { label: '🟡 Apartado',  cls: 'badge-abonado'   },
-  Liquidado: { label: '🟢 Liquidado', cls: 'badge-liquidado' },
+  Liquidado: { label: '🟢 Pagado', cls: 'badge-liquidado' },
   Vencido:   { label: '🔴 Vencido',   cls: 'badge-deuda'     },
 }
 

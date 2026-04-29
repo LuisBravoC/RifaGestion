@@ -38,7 +38,7 @@ export default function Dashboard() {
         </div>
         <div className="card stat-card">
           <div className="stat-value" style={{ color: 'var(--text)' }}>{totalLiquidados} / {totalBoletos}</div>
-          <div className="stat-label">Boletos liquidados</div>
+          <div className="stat-label">Boletos pagados</div>
         </div>
       </div>
 
