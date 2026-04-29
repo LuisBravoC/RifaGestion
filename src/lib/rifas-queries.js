@@ -294,12 +294,20 @@ export async function vencerBoletosExpirados(rifaId, horasExpiracion) {
   // cutoffDate viene del módulo puro boleto-expiry.js — sin acoplamiento a Supabase
   const { cutoffDate } = await import('./boleto-expiry.js')
   const expireDate = cutoffDate(horasExpiracion).toISOString()
+  // Vencer Apartados que superaron el límite
   await supabase
     .from('boletos')
     .update({ estatus: 'Vencido' })
     .eq('rifa_id', rifaId)
     .eq('estatus', 'Apartado')
     .lt('fecha_apartado', expireDate)
+  // Reactivar Vencidos que volvieron a quedar dentro del límite (ej: caducidad ampliada)
+  await supabase
+    .from('boletos')
+    .update({ estatus: 'Apartado' })
+    .eq('rifa_id', rifaId)
+    .eq('estatus', 'Vencido')
+    .gte('fecha_apartado', expireDate)
 }
 
 // =============================================================================
