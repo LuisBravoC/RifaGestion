@@ -18,10 +18,9 @@ const EMPTY = { nombre_completo: '', telefono_whatsapp: '', email: '' }
 
 export default function ParticipantesList() {
   const navigate = useNavigate()
-  const [refresh, setRefresh] = useState(0)
   const crumbs = useBreadcrumbs()
   const { isAdmin } = useAuth()
-  const { data, loading, error } = useQuery(() => q.getParticipantes(), [refresh])
+  const { data, loading, error, refetch } = useQuery(() => q.getParticipantes(), [])
 
   const [search,   setSearch]   = useState('')
   const [viewMode, setViewMode] = useState('cards')  // 'cards' | 'list'
@@ -34,7 +33,7 @@ export default function ParticipantesList() {
   const toast = useToast()
 
   const set  = (k, v) => setForm(f => ({ ...f, [k]: v }))
-  const done = msg  => { setRefresh(r => r + 1); setDrawer(null); if (msg) toast(msg) }
+  const done = msg  => { refetch(); setDrawer(null); if (msg) toast(msg) }
 
   function openCreate() { setForm(EMPTY); setDrawer({ mode: 'create' }) }
   function openEdit(p, e) {
@@ -60,7 +59,7 @@ export default function ParticipantesList() {
       await q.deleteParticipante(confirm)
       toast('Participante eliminado')
       setConfirm(null)
-      setRefresh(r => r + 1)
+      refetch()
     } catch (e) { showErr(e) }
     finally { setSaving(false) }
   }

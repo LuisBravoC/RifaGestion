@@ -30,14 +30,13 @@ import StatusBadge from '../components/StatusBadge.jsx'
 
 export default function BoletoGrid() {
   const { campanaId, rifaId } = useParams()
-  const [refresh, setRefresh] = useState(0)
   const [panel, setPanel] = useState(null)
   const { isAdmin } = useAuth()
   const toast = useToast()
 
   const campanaQ = useQuery(() => q.getCampana(campanaId), [campanaId])
   const rifaQ    = useQuery(() => q.getRifa(rifaId), [rifaId])
-  const boletosQ = useQuery(() => q.getBoletosByRifa(rifaId), [rifaId, refresh])
+  const boletosQ = useQuery(() => q.getBoletosByRifa(rifaId), [rifaId])
 
   const [errModal, setErrModal] = useState(null)
   const showErr = e => setErrModal(typeof e === 'string' ? { title: 'Aviso', body: e } : (e?.title ? e : parseError(e)))
@@ -87,7 +86,7 @@ export default function BoletoGrid() {
         rifaId, filas, rifa.precio_boleto
       )
       setImportModal(null)
-      setRefresh(r => r + 1)
+      boletosQ.refetch()
       toast(`Importación completada: ${importados} boleto${importados !== 1 ? 's' : ''} importados${saltados ? `, ${saltados} omitidos` : ''}`)
     } catch (e) { showErr(e); setImportModal(m => ({ ...m, importing: false })) }
   }
@@ -393,7 +392,7 @@ export default function BoletoGrid() {
           total={total}
           isAdmin={isAdmin}
           onClose={closePanel}
-          onDone={({ noClose } = {}) => { if (!noClose) closePanel(); setRefresh(r => r + 1) }}
+          onDone={({ noClose } = {}) => { if (!noClose) closePanel(); boletosQ.refetch() }}
           onError={setErrModal}
           toast={toast}
         />

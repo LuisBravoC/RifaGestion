@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from 'react'
+import { useState, useEffect, useRef, useCallback } from 'react'
 
 /**
  * Hook genérico para queries async.
@@ -6,13 +6,16 @@ import { useState, useEffect, useRef } from 'react'
  * deps: array de dependencias (como useEffect).
  *
  * Solo muestra loading=true en la primera carga.
- * Los re-fetches (cuando los deps cambian y ya hay data) actualizan en silencio,
- * evitando desmontar componentes hijos que tengan estado local.
+ * Los re-fetches (cuando los deps cambian o se llama refetch()) actualizan en
+ * segundo plano, evitando desmontar componentes hijos con estado local.
+ *
+ * Retorna { data, loading, error, refetch }
  */
 export function useQuery(queryFn, deps = []) {
   const [data,    setData]    = useState(null)
   const [loading, setLoading] = useState(true)
   const [error,   setError]   = useState(null)
+  const [tick,    setTick]    = useState(0)      // incrementar dispara el effect
   const hasDataRef = useRef(false)
 
   useEffect(() => {
@@ -31,7 +34,9 @@ export function useQuery(queryFn, deps = []) {
       .finally(()  => { if (!cancelled) setLoading(false) })
     return () => { cancelled = true }
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, deps)
+  }, [...deps, tick])
 
-  return { data, loading, error }
+  const refetch = useCallback(() => setTick(t => t + 1), [])
+
+  return { data, loading, error, refetch }
 }

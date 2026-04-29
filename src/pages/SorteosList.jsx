@@ -32,10 +32,8 @@ const ESTATUS_RIFA = ['Activa', 'Finalizada', 'Cancelada']
 export default function SorteosList() {
   const { campanaId } = useParams()
   const navigate = useNavigate()
-  const [refresh, setRefresh] = useState(0)
-
   const campanaQ  = useQuery(() => q.getCampana(campanaId), [campanaId])
-  const rifasQ    = useQuery(() => q.getRifasConResumen(campanaId), [campanaId, refresh])
+  const rifasQ    = useQuery(() => q.getRifasConResumen(campanaId), [campanaId])
 
   const [drawer,   setDrawer]   = useState(null)
   const [form,     setForm]     = useState(EMPTY)
@@ -47,7 +45,7 @@ export default function SorteosList() {
   const { isAdmin } = useAuth()
 
   const set  = (k, v) => setForm(f => ({ ...f, [k]: v }))
-  const done = msg  => { setRefresh(r => r + 1); setDrawer(null); if (msg) toast(msg) }
+  const done = msg  => { rifasQ.refetch(); setDrawer(null); if (msg) toast(msg) }
 
   function openCreate() { setForm(EMPTY); setDrawer({ mode: 'create' }) }
   function openEdit(rifa, e) {
@@ -90,7 +88,7 @@ export default function SorteosList() {
       await q.deleteRifa(confirm)
       toast('Rifa eliminada')
       setConfirm(null)
-      setRefresh(r => r + 1)
+      rifasQ.refetch()
     } catch (e) { showErr(e) }
     finally { setSaving(false) }
   }

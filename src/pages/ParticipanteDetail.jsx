@@ -25,13 +25,12 @@ import StatusBadge from '../components/StatusBadge.jsx'
 export default function ParticipanteDetail() {
   const navigate = useNavigate()
   const { partId } = useParams()
-  const [refresh, setRefresh] = useState(0)
   const { isAdmin } = useAuth()
   const toast = useToast()
 
-  const { data, loading, error } = useQuery(
+  const { data, loading, error, refetch } = useQuery(
     () => q.getParticipanteConBoletos(partId),
-    [partId, refresh]
+    [partId]
   )
 
   const [drawerEdit, setDrawerEdit] = useState(false)
@@ -61,7 +60,7 @@ export default function ParticipanteDetail() {
       await q.updateParticipante(partId, form)
       toast('Datos actualizados')
       setDrawerEdit(false)
-      setRefresh(r => r + 1)
+      refetch()
     } catch (e) { showErr(e) }
     finally { setSaving(false) }
   }
@@ -95,7 +94,7 @@ export default function ParticipanteDetail() {
       }
       setDrawerPago(null)
       setFormPago({ monto: '', fecha: today(), metodo_pago: 'Efectivo' })
-      setRefresh(r => r + 1)
+      refetch()
     } catch (e) { showErr(e) }
     finally { setSaving(false) }
   }
@@ -108,7 +107,7 @@ export default function ParticipanteDetail() {
       await q.liquidarBoleto(b.id, b.saldo_pendiente)
       toast(`Boleto #${fmtNum(b.numero_asignado, b.cantidad_boletos)} liquidado 🎉`)
       setConfirmLiq(null)
-      setRefresh(r => r + 1)
+      refetch()
     } catch (e) { showErr(e) }
     finally { setSaving(false) }
   }

@@ -2,6 +2,7 @@ import { Routes, Route, Navigate } from 'react-router-dom'
 import { ToastProvider } from './lib/toast.jsx'
 import { AuthProvider, useAuth } from './lib/AuthContext.jsx'
 import ProtectedRoute from './components/ProtectedRoute.jsx'
+import ErrorBoundary from './components/ErrorBoundary.jsx'
 import Topbar from './components/Topbar.jsx'
 import Login from './pages/Login.jsx'
 import Dashboard from './pages/Dashboard.jsx'
@@ -45,6 +46,7 @@ function AppShell() {
 
 export default function App() {
   return (
+    <ErrorBoundary>
     <AuthProvider>
     <ToastProvider>
       <Routes>
@@ -57,5 +59,6 @@ export default function App() {
       </Routes>
     </ToastProvider>
     </AuthProvider>
+    </ErrorBoundary>
   )
 }
