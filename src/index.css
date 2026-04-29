@@ -2551,11 +2551,18 @@ html.google .stat-label {
 
 .mis-boletos-form {
   display: flex;
+  flex-wrap: wrap;
   gap: .6rem;
   margin-bottom: 1.5rem;
 }
+.mis-boletos-form > div { flex: 1 1 0; min-width: 0; }
+.mis-boletos-form .btn  { flex-shrink: 0; width: 100%; }
+@media (min-width: 400px) {
+  .mis-boletos-form > div { flex: 1 1 auto; }
+  .mis-boletos-form .btn  { width: auto; }
+}
 .mis-boletos-form input {
-  flex: 1;
+  width: 100%;
   background: var(--bg);
   border: 1px solid var(--border);
   border-radius: .5rem;
@@ -2564,6 +2571,7 @@ html.google .stat-label {
   font-size: .95rem;
   outline: none;
   transition: border-color .2s;
+  box-sizing: border-box;
 }
 .mis-boletos-form input:focus { border-color: var(--accent); }
 
@@ -2619,8 +2627,8 @@ html.google .stat-label {
 
 .mis-boletos-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(160px, 1fr));
-  gap: .65rem;
+  grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
+  gap: .75rem;
   margin-top: .75rem;
 }
 .mis-boletos-deuda-total {
@@ -2660,7 +2668,51 @@ html.google .stat-label {
   margin-top: .35rem;
   color: var(--text-muted);
 }
-.boleto-mini-historial { margin-top: .5rem; }
+.boleto-mini-historial {
+  margin-top: .6rem;
+  border-top: 1px dashed var(--border);
+  padding-top: .5rem;
+}
+.boleto-mini-historial summary {
+  cursor: pointer;
+  font-size: .75rem;
+  color: var(--text-muted);
+  user-select: none;
+  list-style: none;
+  display: flex;
+  align-items: center;
+  gap: .3rem;
+}
+.boleto-mini-historial summary::before {
+  content: '▸';
+  font-size: .65rem;
+  transition: transform .2s;
+}
+details[open].boleto-mini-historial summary::before { transform: rotate(90deg); }
+.boleto-mini-historial-list {
+  margin-top: .5rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0;
+}
+.boleto-mini-pago-row {
+  display: flex;
+  flex-direction: column;
+  gap: .05rem;
+  padding: .35rem 0;
+  border-bottom: 1px solid var(--border);
+}
+.boleto-mini-pago-row:last-child { border-bottom: none; }
+.boleto-mini-pago-monto {
+  font-size: .82rem;
+  font-weight: 700;
+  color: var(--liquidado);
+  font-variant-numeric: tabular-nums;
+}
+.boleto-mini-pago-meta {
+  font-size: .72rem;
+  color: var(--text-muted);
+}
 
 /* -- Participantes -------------------------------------------------------- */
 

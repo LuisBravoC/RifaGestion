@@ -208,18 +208,18 @@ function BoletoMini({ boleto, total }) {
       <div className="boleto-mini-pagos">
         <span>Pagado: <strong>{fmt(boleto.total_pagado)}</strong></span>
         {saldo > 0 && <span style={{ color: 'var(--abonado)' }}>Falta: <strong>{fmt(saldo)}</strong></span>}
-        {saldo <= 0 && boleto.estatus !== 'Vencido' && <span style={{ color: 'var(--liquidado)' }}>✓ Completo</span>}
+        {saldo <= 0 && boleto.estatus !== 'Vencido' && <span style={{ color: 'var(--liquidado)' }}>✓ Pagado</span>}
       </div>
       {boleto.pagos?.length > 0 && (
         <details className="boleto-mini-historial">
-          <summary style={{ cursor: 'pointer', fontSize: '.75rem', color: 'var(--text-muted)' }}>
+          <summary>
             Ver historial ({boleto.pagos.length})
           </summary>
-          <div style={{ marginTop: '.35rem', display: 'flex', flexDirection: 'column', gap: '.15rem' }}>
+          <div className="boleto-mini-historial-list">
             {boleto.pagos.map((p, i) => (
-              <div key={i} style={{ fontSize: '.75rem', color: 'var(--text-muted)', display: 'flex', justifyContent: 'space-between' }}>
-                <span>{fmt(p.monto)}</span>
-                <span>{fmtDate(p.fecha)} · {p.metodo_pago}</span>
+              <div key={i} className="boleto-mini-pago-row">
+                <span className="boleto-mini-pago-monto">{fmt(p.monto)}</span>
+                <span className="boleto-mini-pago-meta">{fmtDate(p.fecha)} · {p.metodo_pago}</span>
               </div>
             ))}
           </div>
