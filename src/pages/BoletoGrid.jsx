@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback, useRef } from 'react'
+import { useState, useEffect, useCallback, useRef, useMemo } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
 import {
   Trophy, Search, Plus, X, CheckCircle2, Trash2,
@@ -89,6 +89,7 @@ export default function BoletoGrid() {
   // ── Ganadores ──────────────────────────────────────────────────────────────
   const [ganadores,    setGanadores]    = useState([])  // boletos elegidos
   const [showGanador,  setShowGanador]  = useState(false)
+  const [tombola,       setTombola]       = useState(false)
   const [ultimoGanador, setUltimoGanador] = useState(null)
   const [viewMode,     setViewMode]     = useState('grid')  // 'grid' | 'list'
   const ganadoresSeedRef = useRef(null)
@@ -215,9 +216,14 @@ export default function BoletoGrid() {
       setUltimoGanador(winner)
       const newGanadores = [...ganadores, winner]
       setGanadores(newGanadores)
-      setShowGanador(true)
+      setTombola(true)
       await q.saveGanadores(rifaId, newGanadores)
     } catch (e) { showErr(e) }
+  }
+
+  function handleTombolaDone() {
+    setTombola(false)
+    setShowGanador(true)
   }
 
   async function handleRemoveGanador(ganadorId) {
@@ -798,6 +804,11 @@ export default function BoletoGrid() {
         </>
       )}
 
+      {/* ══ Animación tómbola ══════════════════════════════════════════════════ */}
+      {tombola && (
+        <TombolaModal total={total} onDone={handleTombolaDone} />
+      )}
+
       {/* ══ Modal ganador ══════════════════════════════════════════════════════ */}
       {showGanador && ultimoGanador && (
         <WinnerModal
@@ -833,6 +844,81 @@ function WinnerModal({ ganador, lugar, total, onClose }) {
         </div>
         <div className="modal-actions">
           <button className="btn btn-primary" onClick={onClose}>Continuar</button>
+        </div>
+      </div>
+    </>
+  )
+}
+
+// ── Animación tómbola ────────────────────────────────────────────────────────
+
+function TombolaModal({ total, onDone }) {
+  const [displayNum, setDisplayNum] = useState(() => Math.floor(Math.random() * total) + 1)
+  const [phase, setPhase] = useState('fast') // 'fast' | 'slow' | 'stop'
+  const onDoneRef = useRef(onDone)
+
+  const floaters = useMemo(() =>
+    Array.from({ length: 8 }, (_, i) => ({
+      id:    i,
+      num:   Math.floor(Math.random() * total) + 1,
+      delay: +(i * 0.45).toFixed(2),
+      dur:   +(1.4 + Math.random() * 0.8).toFixed(2),
+      left:  +(8 + Math.random() * 84).toFixed(1),
+    })), [total])
+
+  useEffect(() => {
+    let fastTick, slowTick, t1, t2, t3
+    let cancelled = false
+
+    fastTick = setInterval(() => setDisplayNum(Math.floor(Math.random() * total) + 1), 60)
+
+    t1 = setTimeout(() => {
+      clearInterval(fastTick)
+      setPhase('slow')
+      slowTick = setInterval(() => setDisplayNum(Math.floor(Math.random() * total) + 1), 240)
+      t2 = setTimeout(() => {
+        clearInterval(slowTick)
+        setPhase('stop')
+        t3 = setTimeout(() => { if (!cancelled) onDoneRef.current() }, 700)
+      }, 1200)
+    }, 2600)
+
+    return () => {
+      cancelled = true
+      clearInterval(fastTick)
+      clearInterval(slowTick)
+      clearTimeout(t1)
+      clearTimeout(t2)
+      clearTimeout(t3)
+    }
+  }, [total])
+
+  return (
+    <>
+      <div className="modal-overlay" />
+      <div className="tombola-stage">
+        <p className="tombola-title">🎟️ ¡Sorteando!</p>
+        <div className={`tombola-drum tombola-drum--${phase}`}>
+          {[0, 30, 60, 90, 120, 150].map(deg => (
+            <div key={deg} className="tombola-bar" style={{ transform: `rotate(${deg}deg)` }} />
+          ))}
+          <div className={`tombola-numwrap tombola-numwrap--${phase}`}>
+            <div className="tombola-num">{fmtNum(displayNum, total)}</div>
+          </div>
+        </div>
+        <p className="tombola-caption">
+          {phase === 'stop' ? '¡Tenemos ganador! 🎊' : 'Seleccionando ganador...'}
+        </p>
+        <div className="tombola-floaters" aria-hidden="true">
+          {floaters.map(f => (
+            <span
+              key={f.id}
+              className="tombola-ticket"
+              style={{ left: `${f.left}%`, animationDuration: `${f.dur}s`, animationDelay: `${f.delay}s` }}
+            >
+              #{fmtNum(f.num, total)}
+            </span>
+          ))}
         </div>
       </div>
     </>
