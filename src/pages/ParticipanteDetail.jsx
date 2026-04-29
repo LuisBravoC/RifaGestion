@@ -105,9 +105,10 @@ export default function ParticipanteDetail() {
     try {
       const b = drawerPago.boleto
       await q.insertPagoRifa({ boleto_id: b.id, ...formPago, monto })
-      // Si el pago cubre o supera el saldo pendiente, liquidar automáticamente
-      if (monto >= Number(b.saldo_pendiente)) {
-        await q.liquidarBoleto(b.id, 0) // el pago ya fue insertado arriba
+      // Verificar el saldo actualizado desde la BD (más fiable que comparar montos)
+      const boletoActualizado = await q.getBoleto(b.id)
+      if (Number(boletoActualizado.saldo_pendiente) <= 0 && boletoActualizado.estatus !== 'Liquidado') {
+        await q.liquidarBoleto(b.id, 0)
         toast(`Boleto #${fmtNum(b.numero_asignado, b.cantidad_boletos)} liquidado 🎉`)
       } else {
         toast('Pago registrado')

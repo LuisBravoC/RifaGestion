@@ -130,13 +130,20 @@ export default function BoletoPanel({ boleto: boletoInicial, rifa, total, isAdmi
     setSaving(true)
     try {
       await q.insertPagoRifa({ boleto_id: boleto.id, ...formPago, monto: Number(formPago.monto) })
-      toast('Pago registrado')
       const [nuevosPagos, boletoActualizado] = await Promise.all([
         q.getPagosByBoleto(boleto.id),
         q.getBoleto(boleto.id),
       ])
+      // Auto-liquidar si el saldo quedó en cero
+      if (Number(boletoActualizado.saldo_pendiente) <= 0 && boletoActualizado.estatus !== 'Liquidado') {
+        await q.liquidarBoleto(boleto.id, 0)
+        setBoleto(await q.getBoleto(boleto.id))
+        toast(`Boleto #${fmtNum(boleto.numero_asignado, total)} liquidado 🎉`)
+      } else {
+        setBoleto(boletoActualizado)
+        toast('Pago registrado')
+      }
       setPagos(nuevosPagos)
-      setBoleto(boletoActualizado)
       setFormPago({ monto: '', fecha: today(), metodo_pago: 'Efectivo' })
       setShowAddPago(false)
       onDone({ noClose: true })
@@ -153,8 +160,14 @@ export default function BoletoPanel({ boleto: boletoInicial, rifa, total, isAdmi
         q.getPagosByBoleto(boleto.id),
         q.getBoleto(boleto.id),
       ])
+      // Revertir a Apartado si era Liquidado y ahora tiene saldo pendiente
+      if (boletoActualizado.estatus === 'Liquidado' && Number(boletoActualizado.saldo_pendiente) > 0) {
+        await q.revertirApartado(boleto.id)
+        setBoleto(await q.getBoleto(boleto.id))
+      } else {
+        setBoleto(boletoActualizado)
+      }
       setPagos(nuevosPagos)
-      setBoleto(boletoActualizado)
       onDone({ noClose: true })
     } catch (e) { showErr(e) }
     finally { setSaving(false) }

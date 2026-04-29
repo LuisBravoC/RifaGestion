@@ -264,6 +264,13 @@ export async function liquidarBoleto(boletoId, saldoPendiente = 0) {
   )
 }
 
+export async function revertirApartado(boletoId) {
+  return check(
+    await supabase.from('boletos').update({ estatus: 'Apartado' }).eq('id', boletoId),
+    'revertirApartado'
+  )
+}
+
 export async function liberarBoleto(boletoId) {
   check(
     await supabase.from('boletos').update({
