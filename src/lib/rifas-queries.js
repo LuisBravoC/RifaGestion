@@ -1,0 +1,406 @@
+/**
+ * rifas-queries.js — Capa de acceso a datos para el Sistema de Gestión de Rifas.
+ *
+ * Jerarquía: Campaña > Rifa (Sorteo) > Boleto > Historial de Pagos
+ * Cada función es async y lanza error en caso de fallo de Supabase.
+ */
+import { supabase } from './supabase.js'
+
+// ─── Utilidad interna ─────────────────────────────────────────────────────────
+function check({ data, error }, label) {
+  if (error) {
+    console.error(`[rifas] ${label ?? ''}`, error)
+    throw error
+  }
+  return data
+}
+
+// =============================================================================
+// CAMPAÑAS
+// =============================================================================
+
+export async function getCampanas() {
+  return check(
+    await supabase.from('campanas').select('*').order('nombre'),
+    'getCampanas'
+  )
+}
+
+export async function getCampana(id) {
+  return check(
+    await supabase.from('campanas').select('*').eq('id', id).single(),
+    'getCampana'
+  )
+}
+
+/**
+ * Devuelve campañas con resumen financiero (meta, recaudado, boletos vendidos)
+ * usando 3 queries paralelas en lugar de N+1.
+ */
+export async function getCampanasConResumen() {
+  const [campanas, rifas, bolAgg] = await Promise.all([
+    supabase.from('campanas').select('*').order('nombre'),
+    supabase.from('rifas').select('id, campana_id, precio_boleto, cantidad_boletos'),
+    supabase.from('vista_saldo_boletos').select('campana_id, estatus, total_pagado'),
+  ])
+  check(campanas, 'getCampanasConResumen:campanas')
+  check(rifas,    'getCampanasConResumen:rifas')
+  check(bolAgg,   'getCampanasConResumen:boletos')
+
+  // Acumular meta y cuenta de rifas por campaña
+  const resumenMap = {}
+  for (const r of rifas.data) {
+    const cid = r.campana_id
+    if (!resumenMap[cid]) resumenMap[cid] = { rifas: 0, meta: 0, boletos: 0, liquidados: 0, recaudado: 0 }
+    resumenMap[cid].rifas++
+    resumenMap[cid].meta += Number(r.precio_boleto) * r.cantidad_boletos
+  }
+
+  // Acumular boletos y recaudado por campaña
+  for (const b of bolAgg.data) {
+    const cid = b.campana_id
+    if (!cid) continue
+    if (!resumenMap[cid]) resumenMap[cid] = { rifas: 0, meta: 0, boletos: 0, liquidados: 0, recaudado: 0 }
+    resumenMap[cid].boletos++
+    if (b.estatus === 'Liquidado') resumenMap[cid].liquidados++
+    resumenMap[cid].recaudado += Number(b.total_pagado)
+  }
+
+  const EMPTY = { rifas: 0, meta: 0, boletos: 0, liquidados: 0, recaudado: 0 }
+  return campanas.data.map(c => ({ ...c, resumen: resumenMap[c.id] ?? EMPTY }))
+}
+
+export async function insertCampana(data) {
+  return check(
+    await supabase.from('campanas').insert(data).select().single(),
+    'insertCampana'
+  )
+}
+
+export async function updateCampana(id, data) {
+  return check(
+    await supabase.from('campanas').update(data).eq('id', id).select().single(),
+    'updateCampana'
+  )
+}
+
+export async function deleteCampana(id) {
+  return check(
+    await supabase.from('campanas').delete().eq('id', id),
+    'deleteCampana'
+  )
+}
+
+// =============================================================================
+// RIFAS (SORTEOS)
+// =============================================================================
+
+export async function getRifasByCampana(campanaId) {
+  return check(
+    await supabase.from('rifas').select('*').eq('campana_id', campanaId).order('created_at'),
+    'getRifasByCampana'
+  )
+}
+
+export async function getRifa(id) {
+  return check(
+    await supabase.from('rifas').select('*').eq('id', id).single(),
+    'getRifa'
+  )
+}
+
+/**
+ * Devuelve rifas de una campaña con resumen de boletos (2 queries paralelas).
+ */
+export async function getRifasConResumen(campanaId) {
+  const [rifasRes, bolRes] = await Promise.all([
+    supabase.from('rifas').select('*').eq('campana_id', campanaId).order('created_at'),
+    supabase.from('vista_saldo_boletos')
+      .select('rifa_id, estatus, total_pagado')
+      .eq('campana_id', campanaId),
+  ])
+  check(rifasRes, 'getRifasConResumen:rifas')
+  check(bolRes,   'getRifasConResumen:boletos')
+
+  const resumenMap = {}
+  for (const b of bolRes.data) {
+    if (!resumenMap[b.rifa_id]) {
+      resumenMap[b.rifa_id] = { total: 0, disponible: 0, apartado: 0, liquidado: 0, vencido: 0, recaudado: 0 }
+    }
+    resumenMap[b.rifa_id].total++
+    resumenMap[b.rifa_id][b.estatus.toLowerCase()]++
+    resumenMap[b.rifa_id].recaudado += Number(b.total_pagado)
+  }
+
+  const EMPTY = { total: 0, disponible: 0, apartado: 0, liquidado: 0, vencido: 0, recaudado: 0 }
+  return rifasRes.data.map(r => ({ ...r, resumen: resumenMap[r.id] ?? EMPTY }))
+}
+
+/**
+ * Crea la rifa y genera automáticamente sus boletos en la BD.
+ * - ≤100 boletos: numeración 0–99 (estilo clásico "00-99")
+ * - >100 boletos: numeración 1–N
+ */
+export async function insertRifa(data) {
+  const rifa = check(
+    await supabase.from('rifas').insert({
+      campana_id:       data.campana_id,
+      nombre_premio:    data.nombre_premio,
+      descripcion:      data.descripcion || null,
+      precio_boleto:    Number(data.precio_boleto),
+      cantidad_boletos: Number(data.cantidad_boletos),
+      fecha_sorteo:     data.fecha_sorteo || null,
+      estatus:          data.estatus || 'Activa',
+      horas_expiracion: Number(data.horas_expiracion) || 24,
+    }).select().single(),
+    'insertRifa'
+  )
+
+  const n     = rifa.cantidad_boletos
+  const start = n <= 100 ? 0 : 1
+  const end   = n <= 100 ? n - 1 : n
+  const rows  = []
+  for (let i = start; i <= end; i++) {
+    rows.push({ rifa_id: rifa.id, numero_asignado: i, estatus: 'Disponible' })
+  }
+  // Insertar en lotes de 1000 para respetar límites de Supabase
+  for (let i = 0; i < rows.length; i += 1000) {
+    check(
+      await supabase.from('boletos').insert(rows.slice(i, i + 1000)),
+      'insertRifa:boletos'
+    )
+  }
+  return rifa
+}
+
+export async function updateRifa(id, data) {
+  return check(
+    await supabase.from('rifas').update(data).eq('id', id).select().single(),
+    'updateRifa'
+  )
+}
+
+export async function deleteRifa(id) {
+  return check(
+    await supabase.from('rifas').delete().eq('id', id),
+    'deleteRifa'
+  )
+}
+
+// =============================================================================
+// BOLETOS
+// =============================================================================
+
+/**
+ * Carga todos los boletos de una rifa desde la vista con saldo calculado.
+ */
+export async function getBoletosByRifa(rifaId) {
+  return check(
+    await supabase
+      .from('vista_saldo_boletos')
+      .select('*')
+      .eq('rifa_id', rifaId)
+      .order('numero_asignado'),
+    'getBoletosByRifa'
+  )
+}
+
+export async function getBoleto(id) {
+  return check(
+    await supabase.from('vista_saldo_boletos').select('*').eq('id', id).single(),
+    'getBoleto'
+  )
+}
+
+/**
+ * Aparta un boleto asignando participante y registrando abono inicial (opcional).
+ */
+export async function asignarBoleto(boletoId, participanteId, montoInicial) {
+  check(
+    await supabase.from('boletos').update({
+      participante_id: participanteId,
+      estatus:         'Apartado',
+      fecha_apartado:  new Date().toISOString(),
+    }).eq('id', boletoId),
+    'asignarBoleto'
+  )
+  if (montoInicial && Number(montoInicial) > 0) {
+    check(
+      await supabase.from('historial_pagos_rifa').insert({
+        boleto_id:   boletoId,
+        monto:       Number(montoInicial),
+        fecha:       new Date().toISOString().slice(0, 10),
+        metodo_pago: 'Efectivo',
+      }),
+      'asignarBoleto:pago'
+    )
+  }
+}
+
+export async function liquidarBoleto(boletoId) {
+  check(
+    await supabase.from('boletos').update({ estatus: 'Liquidado' }).eq('id', boletoId),
+    'liquidarBoleto'
+  )
+}
+
+export async function liberarBoleto(boletoId) {
+  check(
+    await supabase.from('boletos').update({
+      participante_id: null,
+      estatus:         'Disponible',
+      fecha_apartado:  null,
+    }).eq('id', boletoId),
+    'liberarBoleto'
+  )
+}
+
+/**
+ * Marca como "Vencido" los boletos apartados que superaron su tiempo de expiración.
+ * Se ejecuta en el cliente al cargar la cuadrícula; en producción conviene
+ * moverlo a un Edge Function de Supabase.
+ */
+export async function vencerBoletosExpirados(rifaId, horasExpiracion) {
+  if (!rifaId || !horasExpiracion) return
+  const expireDate = new Date(Date.now() - horasExpiracion * 3600000).toISOString()
+  await supabase
+    .from('boletos')
+    .update({ estatus: 'Vencido' })
+    .eq('rifa_id', rifaId)
+    .eq('estatus', 'Apartado')
+    .lt('fecha_apartado', expireDate)
+}
+
+// =============================================================================
+// PARTICIPANTES
+// =============================================================================
+
+export async function insertParticipante(data) {
+  return check(
+    await supabase.from('participantes').insert(data).select().single(),
+    'insertParticipante'
+  )
+}
+
+export async function updateParticipante(id, data) {
+  return check(
+    await supabase.from('participantes').update(data).eq('id', id).select().single(),
+    'updateParticipante'
+  )
+}
+
+/**
+ * Búsqueda por nombre o teléfono (mínimo 2 caracteres).
+ */
+export async function buscarParticipantes(query) {
+  if (!query || query.trim().length < 2) return []
+  const q = `%${query.trim()}%`
+  const { data } = await supabase
+    .from('participantes')
+    .select('id, nombre_completo, telefono_whatsapp')
+    .or(`nombre_completo.ilike.${q},telefono_whatsapp.ilike.${q}`)
+    .limit(8)
+  return data ?? []
+}
+
+// =============================================================================
+// PAGOS
+// =============================================================================
+
+export async function getPagosByBoleto(boletoId) {
+  return check(
+    await supabase
+      .from('historial_pagos_rifa')
+      .select('*')
+      .eq('boleto_id', boletoId)
+      .order('fecha', { ascending: false }),
+    'getPagosByBoleto'
+  )
+}
+
+export async function insertPagoRifa(data) {
+  return check(
+    await supabase.from('historial_pagos_rifa').insert(data).select().single(),
+    'insertPagoRifa'
+  )
+}
+
+export async function deletePagoRifa(id) {
+  return check(
+    await supabase.from('historial_pagos_rifa').delete().eq('id', id),
+    'deletePagoRifa'
+  )
+}
+
+// =============================================================================
+// SORTEO / GANADORES
+// =============================================================================
+
+/**
+ * Elige un ganador aleatorio entre los boletos con estatus "Liquidado".
+ * @param {string}   rifaId      - UUID de la rifa
+ * @param {string[]} excluirIds  - UUIDs de boletos ya elegidos (para 2do, 3er lugar)
+ */
+export async function elegirGanador(rifaId, excluirIds = []) {
+  let query = supabase
+    .from('boletos')
+    .select('id, numero_asignado, participantes(nombre_completo, telefono_whatsapp)')
+    .eq('rifa_id', rifaId)
+    .eq('estatus', 'Liquidado')
+
+  if (excluirIds.length > 0) {
+    query = query.not('id', 'in', `(${excluirIds.join(',')})`)
+  }
+
+  const { data } = await query
+  if (!data || data.length === 0) return null
+  return data[Math.floor(Math.random() * data.length)]
+}
+
+// =============================================================================
+// PERFIL PÚBLICO (/mis-boletos)
+// =============================================================================
+
+/**
+ * Permite a un comprador ver sus boletos ingresando su número de teléfono.
+ * Accesible sin autenticación (requiere políticas RLS anon READ).
+ */
+export async function getMisBoletos(telefono) {
+  if (!telefono?.trim()) return { participante: null, boletos: [] }
+
+  const { data: parts } = await supabase
+    .from('participantes')
+    .select('id, nombre_completo, email')
+    .eq('telefono_whatsapp', telefono.trim())
+    .limit(1)
+
+  if (!parts?.length) return { participante: null, boletos: [] }
+  const participante = parts[0]
+
+  const { data: boletos } = await supabase
+    .from('boletos')
+    .select(`
+      id, numero_asignado, estatus, fecha_apartado,
+      rifa:rifas(id, nombre_premio, fecha_sorteo, precio_boleto, cantidad_boletos),
+      pagos:historial_pagos_rifa(monto, fecha, metodo_pago)
+    `)
+    .eq('participante_id', participante.id)
+    .not('estatus', 'eq', 'Disponible')
+    .order('numero_asignado')
+
+  const enriched = (boletos ?? []).map(b => {
+    const totalPagado = (b.pagos ?? []).reduce((s, p) => s + Number(p.monto), 0)
+    return {
+      id:              b.id,
+      numero_asignado: b.numero_asignado,
+      estatus:         b.estatus,
+      fecha_apartado:  b.fecha_apartado,
+      rifa:            b.rifa,
+      pagos:           b.pagos ?? [],
+      total_pagado:    totalPagado,
+      saldo_pendiente: Number(b.rifa?.precio_boleto ?? 0) - totalPagado,
+    }
+  })
+
+  return { participante, boletos: enriched }
+}
