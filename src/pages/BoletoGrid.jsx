@@ -1,8 +1,9 @@
 import { useState, useEffect, useCallback, useRef } from 'react'
-import { useParams } from 'react-router-dom'
+import { useParams, useNavigate } from 'react-router-dom'
 import {
   Trophy, Search, Plus, X, CheckCircle2, Trash2,
   MessageCircle, Calendar, DollarSign, Zap, Clock, UserPlus,
+  LayoutGrid, List as ListIcon, RotateCcw, ArrowRight,
 } from 'lucide-react'
 import { useQuery } from '../lib/useQuery.js'
 import { useToast } from '../lib/toast.jsx'
@@ -89,6 +90,9 @@ export default function BoletoGrid() {
   const [ganadores,    setGanadores]    = useState([])  // boletos elegidos
   const [showGanador,  setShowGanador]  = useState(false)
   const [ultimoGanador, setUltimoGanador] = useState(null)
+  const [viewMode,     setViewMode]     = useState('grid')  // 'grid' | 'list'
+  const ganadoresSeedRef = useRef(null)
+  const navigate = useNavigate()
 
   // ── Búsqueda de participante (debounced) ───────────────────────────────────
   const searchRef = useRef(null)
@@ -209,15 +213,32 @@ export default function BoletoGrid() {
       const winner  = await q.elegirGanador(rifaId, excluir)
       if (!winner) { showErr('No hay boletos liquidados disponibles para el sorteo.'); return }
       setUltimoGanador(winner)
-      setGanadores(prev => [...prev, winner])
+      const newGanadores = [...ganadores, winner]
+      setGanadores(newGanadores)
       setShowGanador(true)
+      await q.saveGanadores(rifaId, newGanadores)
     } catch (e) { showErr(e) }
   }
 
-  // Verificar expirados al montar (si la rifa está Activa)
+  async function handleRemoveGanador(ganadorId) {
+    const newGanadores = ganadores.filter(g => g.id !== ganadorId)
+    setGanadores(newGanadores)
+    try { await q.saveGanadores(rifaId, newGanadores) } catch (e) { showErr(e) }
+  }
+
+  async function handleResetSorteo() {
+    setGanadores([])
+    try { await q.saveGanadores(rifaId, []) } catch (e) { showErr(e) }
+  }
+
+  // Verificar expirados al montar + cargar ganadores desde BD
   useEffect(() => {
     if (rifaQ.data?.estatus === 'Activa') {
       q.vencerBoletosExpirados(rifaId, rifaQ.data.horas_expiracion).catch(() => {})
+    }
+    if (rifaQ.data && ganadoresSeedRef.current !== rifaId) {
+      ganadoresSeedRef.current = rifaId
+      setGanadores(rifaQ.data.ganadores ?? [])
     }
   }, [rifaId, rifaQ.data])
 
@@ -299,48 +320,118 @@ export default function BoletoGrid() {
 
         <ProgressBar value={stats.recaudado} max={meta} />
 
-        {/* ── Leyenda ── */}
-        <div className="boleto-leyenda">
-          <span className="boleto-leyenda-item"><span className="dot dot-disponible" />Libre</span>
-          <span className="boleto-leyenda-item"><span className="dot dot-apartado" />Apartado</span>
-          <span className="boleto-leyenda-item"><span className="dot dot-liquidado" />Liquidado</span>
-          {stats.Vencido > 0 && (
-            <span className="boleto-leyenda-item"><span className="dot dot-vencido" />Vencido ({stats.Vencido})</span>
-          )}
+        {/* ── Leyenda + toggle de vista ── */}
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '.5rem', margin: '.85rem 0 .75rem' }}>
+          <div className="boleto-leyenda" style={{ margin: 0 }}>
+            <span className="boleto-leyenda-item"><span className="dot dot-disponible" />Libre</span>
+            <span className="boleto-leyenda-item"><span className="dot dot-apartado" />Apartado</span>
+            <span className="boleto-leyenda-item"><span className="dot dot-liquidado" />Liquidado</span>
+            {stats.Vencido > 0 && (
+              <span className="boleto-leyenda-item"><span className="dot dot-vencido" />Vencido ({stats.Vencido})</span>
+            )}
+          </div>
+          <div style={{ display: 'flex', gap: '.3rem' }}>
+            <button
+              className={`btn btn-sm ${viewMode === 'grid' ? 'btn-primary' : 'btn-outline'}`}
+              onClick={() => setViewMode('grid')}
+              title="Vista cuadrícula"
+            >
+              <LayoutGrid size={13} />
+            </button>
+            <button
+              className={`btn btn-sm ${viewMode === 'list' ? 'btn-primary' : 'btn-outline'}`}
+              onClick={() => setViewMode('list')}
+              title="Vista lista"
+            >
+              <ListIcon size={13} />
+            </button>
+          </div>
         </div>
 
-        {/* ── Cuadrícula de boletos ── */}
-        <div className="boleto-grid">
-          {boletos.map(b => {
-            const esGanador = ganadores.some(g => g.id === b.id)
-            return (
-              <button
-                key={b.id}
-                className={[
-                  'boleto-cell',
-                  `boleto-${b.estatus.toLowerCase()}`,
-                  esGanador ? 'boleto-ganador' : '',
-                ].filter(Boolean).join(' ')}
-                onClick={() => openBoleto(b)}
-                title={b.nombre_completo ? `${b.nombre_completo} · ${b.estatus}` : b.estatus}
-              >
-                <span className="boleto-num">{fmtNum(b.numero_asignado, total)}</span>
-                {b.nombre_completo && (
-                  <span className="boleto-initials">{b.nombre_completo.charAt(0).toUpperCase()}</span>
-                )}
-                {esGanador && <span className="boleto-star">★</span>}
-              </button>
-            )
-          })}
-        </div>
+        {/* ── Vista cuadrícula o lista ── */}
+        {viewMode === 'grid' ? (
+          <div className="boleto-grid">
+            {boletos.map(b => {
+              const esGanador = ganadores.some(g => g.id === b.id)
+              return (
+                <button
+                  key={b.id}
+                  className={[
+                    'boleto-cell',
+                    `boleto-${b.estatus.toLowerCase()}`,
+                    esGanador ? 'boleto-ganador' : '',
+                  ].filter(Boolean).join(' ')}
+                  onClick={() => openBoleto(b)}
+                  title={b.nombre_completo ? `${b.nombre_completo} · ${b.estatus}` : b.estatus}
+                >
+                  <span className="boleto-num">{fmtNum(b.numero_asignado, total)}</span>
+                  {b.nombre_completo && (
+                    <span className="boleto-initials">{b.nombre_completo.charAt(0).toUpperCase()}</span>
+                  )}
+                  {esGanador && <span className="boleto-star">★</span>}
+                </button>
+              )
+            })}
+          </div>
+        ) : (
+          <div className="boleto-list">
+            {boletos.map(b => {
+              const esGanador = ganadores.some(g => g.id === b.id)
+              return (
+                <div
+                  key={b.id}
+                  className={[
+                    'boleto-list-row',
+                    `boleto-list-${b.estatus.toLowerCase()}`,
+                    esGanador ? 'boleto-list-ganador' : '',
+                  ].filter(Boolean).join(' ')}
+                  onClick={() => openBoleto(b)}
+                >
+                  <span className="boleto-list-num">{fmtNum(b.numero_asignado, total)}</span>
+                  <span className="boleto-list-nombre">
+                    {b.nombre_completo ?? <em style={{ color: 'var(--text-muted)', fontStyle: 'normal', opacity: .55 }}>Disponible</em>}
+                  </span>
+                  {b.estatus !== 'Disponible' && (
+                    <span className={`badge badge-${
+                      b.estatus === 'Liquidado' ? 'liquidado'
+                        : b.estatus === 'Apartado' ? 'abonado'
+                        : 'deuda'
+                    }`} style={{ fontSize: '.7rem', flexShrink: 0 }}>
+                      {b.estatus}
+                    </span>
+                  )}
+                  {Number(b.total_pagado) > 0 && (
+                    <span style={{ fontSize: '.8rem', color: 'var(--liquidado)', flexShrink: 0 }}>{fmt(b.total_pagado)}</span>
+                  )}
+                  {Number(b.saldo_pendiente) > 0 && (
+                    <span style={{ fontSize: '.8rem', color: 'var(--abonado)', flexShrink: 0 }}>-{fmt(b.saldo_pendiente)}</span>
+                  )}
+                  {esGanador && (
+                    <span style={{ marginLeft: 'auto', fontSize: '.75rem', color: 'var(--abonado)', flexShrink: 0 }}>★ Ganador</span>
+                  )}
+                </div>
+              )
+            })}
+          </div>
+        )}
 
         {/* ── Lista de ganadores elegidos ── */}
         {ganadores.length > 0 && (
           <div className="ganadores-list">
-            <p className="section-heading" style={{ margin: '1.5rem 0 .5rem' }}>Ganadores del sorteo</p>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', margin: '1.5rem 0 .5rem', flexWrap: 'wrap', gap: '.5rem' }}>
+              <p className="section-heading" style={{ margin: 0 }}>Ganadores del sorteo</p>
+              <button
+                className="btn btn-sm"
+                style={{ color: 'var(--deuda)', border: '1px solid var(--deuda)', background: 'none' }}
+                onClick={handleResetSorteo}
+                title="Reiniciar sorteo — elimina todos los ganadores guardados"
+              >
+                <RotateCcw size={13} /> Reiniciar sorteo
+              </button>
+            </div>
             {ganadores.map((g, i) => (
               <div key={g.id} className="ganador-row">
-                <span className="ganador-lugar">{i + 1}er lugar</span>
+                <span className="ganador-lugar">{(['1er','2do','3er'][i] ?? `${i+1}to`)} lugar</span>
                 <span className="ganador-num">#{fmtNum(g.numero_asignado, total)}</span>
                 <span className="ganador-nombre">{g.participantes?.nombre_completo ?? '—'}</span>
                 {g.participantes?.telefono_whatsapp && (
@@ -348,6 +439,14 @@ export default function BoletoGrid() {
                     {g.participantes.telefono_whatsapp}
                   </span>
                 )}
+                <button
+                  className="btn btn-icon btn-danger-icon"
+                  style={{ marginLeft: 'auto', flexShrink: 0 }}
+                  onClick={() => handleRemoveGanador(g.id)}
+                  title="Eliminar este ganador"
+                >
+                  <Trash2 size={13} />
+                </button>
               </div>
             ))}
             {boletosLiqDisp > 0 && (
@@ -500,8 +599,12 @@ export default function BoletoGrid() {
               {/* ── MODO: GESTIONAR ── */}
               {panel.mode === 'gestionar' && (
                 <>
-                  {/* Info del participante */}
-                  <div className="boleto-participante-card">
+                  {/* Info del participante — clic navega al perfil */}
+                  <div
+                    className="boleto-participante-card"
+                    style={{ cursor: panel.boleto.participante_id ? 'pointer' : 'default' }}
+                    onClick={() => panel.boleto.participante_id && navigate(`/participantes/${panel.boleto.participante_id}`)}
+                  >
                     <div style={{ flex: 1 }}>
                       <div style={{ fontWeight: 600, marginBottom: '.15rem' }}>
                         {panel.boleto.nombre_completo ?? '—'}
@@ -514,14 +617,21 @@ export default function BoletoGrid() {
                           <Clock size={11} /> Apartado: {fmtDate(panel.boleto.fecha_apartado)}
                         </div>
                       )}
+                      {panel.boleto.participante_id && (
+                        <div style={{ fontSize: '.73rem', color: 'var(--accent-light)', marginTop: '.3rem', display: 'flex', alignItems: 'center', gap: '.2rem' }}>
+                          Ver perfil <ArrowRight size={11} />
+                        </div>
+                      )}
                     </div>
-                    {panel.boleto.telefono_whatsapp && panel.boleto.saldo_pendiente > 0 && (
-                      <WhatsAppLink
-                        nombre={panel.boleto.nombre_completo}
-                        telefono={panel.boleto.telefono_whatsapp}
-                        saldo={panel.boleto.saldo_pendiente}
-                      />
-                    )}
+                    <div onClick={e => e.stopPropagation()}>
+                      {panel.boleto.telefono_whatsapp && panel.boleto.saldo_pendiente > 0 && (
+                        <WhatsAppLink
+                          nombre={panel.boleto.nombre_completo}
+                          telefono={panel.boleto.telefono_whatsapp}
+                          saldo={panel.boleto.saldo_pendiente}
+                        />
+                      )}
+                    </div>
                   </div>
 
                   {/* Resumen de pagos */}

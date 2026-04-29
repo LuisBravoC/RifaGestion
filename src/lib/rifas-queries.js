@@ -430,6 +430,17 @@ export async function deletePagoRifa(id) {
 // =============================================================================
 
 /**
+ * Persiste el array de ganadores en la columna ganadores de rifas.
+ * SQL requerido: ALTER TABLE rifas ADD COLUMN IF NOT EXISTS ganadores jsonb DEFAULT '[]'::jsonb;
+ */
+export async function saveGanadores(rifaId, ganadores) {
+  return check(
+    await supabase.from('rifas').update({ ganadores }).eq('id', rifaId),
+    'saveGanadores'
+  )
+}
+
+/**
  * Elige un ganador aleatorio entre los boletos con estatus "Liquidado".
  * @param {string}   rifaId      - UUID de la rifa
  * @param {string[]} excluirIds  - UUIDs de boletos ya elegidos (para 2do, 3er lugar)

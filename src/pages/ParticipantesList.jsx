@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { Users, Phone, Mail, ArrowRight, Pencil, Trash2, Plus, CheckCircle2, Clock, AlertCircle } from 'lucide-react'
+import { Users, Phone, Mail, ArrowRight, Pencil, Trash2, Plus, CheckCircle2, Clock, AlertCircle, LayoutGrid, List as ListIcon } from 'lucide-react'
 import { useQuery } from '../lib/useQuery.js'
 import { useToast } from '../lib/toast.jsx'
 import { fmt } from '../lib/formatters.js'
@@ -24,6 +24,7 @@ export default function ParticipantesList() {
   const { data, loading, error } = useQuery(() => q.getParticipantes(), [refresh])
 
   const [search,   setSearch]   = useState('')
+  const [viewMode, setViewMode] = useState('cards')  // 'cards' | 'list'
   const [drawer,   setDrawer]   = useState(null)
   const [form,     setForm]     = useState(EMPTY)
   const [saving,   setSaving]   = useState(false)
@@ -85,11 +86,27 @@ export default function ParticipantesList() {
       <div className="page">
         <div className="page-title-row">
           <h1 className="page-title" style={{ margin: 0 }}><Users size={22} /> Participantes</h1>
-          {isAdmin && (
-            <button className="btn btn-primary" onClick={openCreate}>
-              <Plus size={15} /> Nuevo participante
+          <div style={{ display: 'flex', gap: '.4rem', alignItems: 'center' }}>
+            <button
+              className={`btn btn-sm ${viewMode === 'cards' ? 'btn-primary' : 'btn-outline'}`}
+              onClick={() => setViewMode('cards')}
+              title="Vista tarjetas"
+            >
+              <LayoutGrid size={14} />
             </button>
-          )}
+            <button
+              className={`btn btn-sm ${viewMode === 'list' ? 'btn-primary' : 'btn-outline'}`}
+              onClick={() => setViewMode('list')}
+              title="Vista lista"
+            >
+              <ListIcon size={14} />
+            </button>
+            {isAdmin && (
+              <button className="btn btn-primary" onClick={openCreate}>
+                <Plus size={15} /> Nuevo participante
+              </button>
+            )}
+          </div>
         </div>
 
         {/* Barra de búsqueda */}
@@ -110,22 +127,41 @@ export default function ParticipantesList() {
           </p>
         )}
 
-        <div className="grid grid-auto">
-          {list.map(p => (
-            <ParticipanteCard
-              key={p.id}
-              part={p}
-              onEdit={isAdmin ? openEdit : null}
-              onDelete={isAdmin ? id => setConfirm(id) : null}
-              onClick={() => navigate(`/participantes/${p.id}`)}
-            />
-          ))}
-          {list.length === 0 && (
-            <p className="empty">
-              {search.trim() ? 'Sin resultados para la búsqueda.' : 'No hay participantes registrados.'}
-            </p>
-          )}
-        </div>
+        {viewMode === 'cards' ? (
+          <div className="grid grid-auto">
+            {list.map(p => (
+              <ParticipanteCard
+                key={p.id}
+                part={p}
+                onEdit={isAdmin ? openEdit : null}
+                onDelete={isAdmin ? id => setConfirm(id) : null}
+                onClick={() => navigate(`/participantes/${p.id}`)}
+              />
+            ))}
+            {list.length === 0 && (
+              <p className="empty">
+                {search.trim() ? 'Sin resultados para la búsqueda.' : 'No hay participantes registrados.'}
+              </p>
+            )}
+          </div>
+        ) : (
+          <div className="part-list-container">
+            {list.map(p => (
+              <ParticipanteRow
+                key={p.id}
+                part={p}
+                onEdit={isAdmin ? openEdit : null}
+                onDelete={isAdmin ? id => setConfirm(id) : null}
+                onClick={() => navigate(`/participantes/${p.id}`)}
+              />
+            ))}
+            {list.length === 0 && (
+              <p className="empty">
+                {search.trim() ? 'Sin resultados para la búsqueda.' : 'No hay participantes registrados.'}
+              </p>
+            )}
+          </div>
+        )}
       </div>
 
       {/* Drawer crear/editar */}
@@ -185,6 +221,48 @@ async function supabaseDeleteParticipante(id) {
   const { supabase } = await import('../lib/supabase.js')
   const { error } = await supabase.from('participantes').delete().eq('id', id)
   if (error) throw error
+}
+
+// ── Fila de participante (vista lista) ────────────────────────────────────────
+
+function ParticipanteRow({ part, onEdit, onDelete, onClick }) {
+  const r = part.resumen ?? { total: 0, liquidados: 0, apartados: 0, pagado: 0, pendiente: 0 }
+  return (
+    <div className="part-list-row" onClick={onClick}>
+      <div className="part-avatar" aria-hidden="true">
+        {part.nombre_completo.charAt(0).toUpperCase()}
+      </div>
+      <div style={{ flex: 1, minWidth: 0 }}>
+        <div style={{ fontWeight: 600, fontSize: '.92rem', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+          {part.nombre_completo}
+        </div>
+        <div style={{ fontSize: '.78rem', color: 'var(--text-muted)', display: 'flex', gap: '.6rem', flexWrap: 'wrap', marginTop: '.1rem' }}>
+          {part.telefono_whatsapp && <span><Phone size={10} /> {part.telefono_whatsapp}</span>}
+          {part.email && <span><Mail size={10} /> {part.email}</span>}
+        </div>
+      </div>
+      <div style={{ textAlign: 'right', fontSize: '.8rem', flexShrink: 0 }}>
+        <div style={{ color: 'var(--text-muted)' }}>
+          {r.total} {r.total === 1 ? 'boleto' : 'boletos'}
+          {r.liquidados > 0 && <span style={{ color: 'var(--liquidado)', marginLeft: '.35rem' }}>· {r.liquidados} liq.</span>}
+        </div>
+        {r.pendiente > 0 && (
+          <div style={{ color: 'var(--abonado)', fontWeight: 600 }}>Debe {fmt(r.pendiente)}</div>
+        )}
+      </div>
+      {onEdit && (
+        <button className="btn btn-icon" onClick={e => onEdit(part, e)} title="Editar">
+          <Pencil size={14} />
+        </button>
+      )}
+      {onDelete && (
+        <button className="btn btn-icon btn-danger-icon" onClick={e => { e.stopPropagation(); onDelete(part.id) }} title="Eliminar">
+          <Trash2 size={14} />
+        </button>
+      )}
+      <ArrowRight size={14} style={{ color: 'var(--text-muted)', flexShrink: 0 }} />
+    </div>
+  )
 }
 
 // ── Tarjeta de participante ───────────────────────────────────────────────────
