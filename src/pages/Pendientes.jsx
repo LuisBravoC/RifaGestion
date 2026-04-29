@@ -92,6 +92,12 @@ export default function Pendientes() {
         </div>
 
         {/* ── Contenido con fade suave en re-fetch ── */}
+        <style>{`
+          @keyframes pendientes-appear {
+            from { opacity: 0; transform: translateY(12px); }
+            to   { opacity: 1; transform: translateY(0); }
+          }
+        `}</style>
         <div style={{ opacity: pendQ.loading && pendQ.data ? 0.55 : 1, transition: 'opacity .22s ease' }}>
           {pendQ.loading && !pendQ.data ? (
             <LoadingSpinner text="Cargando pendientes…" />
@@ -99,10 +105,17 @@ export default function Pendientes() {
             <ErrorMsg message={pendQ.error} />
           ) : pendientes.length === 0 ? (
             <p style={{ color: 'var(--text-muted)', textAlign: 'center', marginTop: '3rem' }}>Sin boletos pendientes de pago.</p>
-          ) : rifaId ? (
-            <PendientesList boletos={pendientes} />
           ) : (
-            (agrupados ?? []).map(grupo => <GrupoRifa key={grupo.rifaId} grupo={grupo} />)
+            <div
+              key={rifaId ? 'single' : 'grouped'}
+              style={{ animation: 'pendientes-appear .3s ease both' }}
+            >
+              {rifaId ? (
+                <PendientesList boletos={pendientes} />
+              ) : (
+                (agrupados ?? []).map(grupo => <GrupoRifa key={grupo.rifaId} grupo={grupo} />)
+              )}
+            </div>
           )}
         </div>
       </div>
