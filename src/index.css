@@ -2437,6 +2437,32 @@ html.google .stat-label {
   60%  { opacity: .7; }
   100% { transform: translateY(-280px) rotate(12deg);  opacity: 0;  }
 }
+.tombola-stage--reveal {
+  background: rgba(0,0,0,.75);
+  backdrop-filter: blur(10px);
+}
+.tombola-winner {
+  text-align: center;
+  background: var(--bg-card);
+  border: 2px solid var(--accent-light);
+  border-radius: var(--radius);
+  padding: 2.5rem 2rem;
+  width: min(360px, calc(100vw - 2rem));
+  box-shadow: 0 0 48px rgba(99,102,241,.5), 0 0 96px rgba(99,102,241,.2);
+  animation: tombolaReveal .5s cubic-bezier(.175,.885,.32,1.275) both;
+  position: relative;
+  z-index: 1;
+}
+@keyframes tombolaReveal {
+  from { opacity: 0; transform: scale(.75); }
+  to   { opacity: 1; transform: scale(1);   }
+}
+.tombola-winner-emoji { font-size: 3rem; margin-bottom: .5rem; animation: bounce .6s ease infinite alternate; }
+.tombola-winner-lugar { font-size: 1rem; font-weight: 700; color: var(--accent-light); text-transform: uppercase; letter-spacing: .08em; margin-bottom: .5rem; }
+.tombola-winner-num   { font-size: 3.5rem; font-weight: 900; color: #fff; letter-spacing: -.02em; line-height: 1; margin-bottom: .5rem; text-shadow: 0 0 16px rgba(99,102,241,1), 0 0 40px rgba(99,102,241,.7); }
+.tombola-winner-name  { font-size: 1.3rem; font-weight: 700; margin-bottom: .25rem; color: var(--text); }
+.tombola-winner-tel   { font-size: .9rem; color: var(--text-muted); margin-bottom: .75rem; }
+.tombola-winner-btn   { margin-top: 1.25rem; }
 
 /* -- P�gina p�blica Mis Boletos -------------------------------------------- */
 .mis-boletos-page {
