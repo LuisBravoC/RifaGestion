@@ -18,6 +18,7 @@ import Drawer from '../components/Drawer.jsx'
 import ConfirmModal from '../components/ConfirmModal.jsx'
 import ErrorModal from '../components/ErrorModal.jsx'
 import { parseError } from '../lib/parseError.js'
+import { STATUS_INFO } from '../lib/boleto-status.js'
 
 // ── Utilidades ────────────────────────────────────────────────────────────────
 
@@ -32,11 +33,6 @@ function fmtDate(d) {
   return new Date(raw).toLocaleDateString('es-MX', { day: '2-digit', month: 'short', year: 'numeric' })
 }
 
-const STATUS_INFO = {
-  Apartado:  { label: '🟡 Apartado',  cls: 'badge-abonado',   icon: Clock },
-  Liquidado: { label: '🟢 Pagado', cls: 'badge-liquidado', icon: CheckCircle2 },
-  Vencido:   { label: '🔴 Vencido',   cls: 'badge-deuda',     icon: AlertCircle },
-}
 
 const today = () => new Date().toISOString().slice(0, 10)
 
@@ -431,7 +427,8 @@ function BoletoRow({ boleto: b, total, isAdmin, onPagar, onLiquidar }) {
       <div className="part-boleto-num">#{fmtNum(b.numero_asignado, total)}</div>
 
       {/* Badge estatus */}
-      <span className={`badge ${si.cls}`} style={{ fontSize: '.72rem', flexShrink: 0 }}>
+      <span className={`badge ${si.cls}`} style={{ fontSize: '.72rem', flexShrink: 0, display: 'inline-flex', alignItems: 'center', gap: '.25rem' }}>
+        {/* si.icon && <si.icon size={12} /> */}
         {si.label}
       </span>
 

@@ -4,6 +4,7 @@ import { Ticket, Search, Phone, CheckCircle2, Clock, AlertCircle } from 'lucide-
 import { fmt } from '../lib/formatters.js'
 import { getMisBoletos } from '../lib/rifas-queries.js'
 import ProgressBar from '../components/ProgressBar.jsx'
+import { STATUS_INFO } from '../lib/boleto-status.js'
 
 /** Formatea número de boleto con ceros a la izquierda */
 function fmtNum(n, total) {
@@ -15,12 +16,6 @@ function fmtDate(d) {
   if (!d) return '—'
   const raw = typeof d === 'string' && d.length === 10 ? d + 'T12:00:00' : d
   return new Date(raw).toLocaleDateString('es-MX', { day: '2-digit', month: 'short', year: 'numeric' })
-}
-
-const STATUS_INFO = {
-  Apartado:  { label: '🟡 Apartado',  cls: 'badge-abonado'   },
-  Liquidado: { label: '🟢 Pagado', cls: 'badge-liquidado' },
-  Vencido:   { label: '🔴 Vencido',   cls: 'badge-deuda'     },
 }
 
 export default function MisBoletos() {
