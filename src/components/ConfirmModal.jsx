@@ -5,7 +5,7 @@ import { AlertTriangle } from 'lucide-react'
  * Uso:
  *   <ConfirmModal message="¿Eliminar?" onConfirm={fn} onCancel={fn} loading={bool} />
  */
-export default function ConfirmModal({ message = '¿Confirmas eliminar este registro? Esta acción no se puede deshacer.', onConfirm, onCancel, loading = false }) {
+export default function ConfirmModal({ message = '¿Confirmas eliminar este registro? Esta acción no se puede deshacer.', onConfirm, onCancel, loading = false, confirmLabel = 'Eliminar', loadingLabel = 'Eliminando…', confirmClassName = 'btn-danger' }) {
   return (
     <>
       <div className="modal-overlay" onClick={onCancel} />
@@ -16,8 +16,8 @@ export default function ConfirmModal({ message = '¿Confirmas eliminar este regi
           <button className="btn btn-outline" onClick={onCancel} disabled={loading}>
             Cancelar
           </button>
-          <button className="btn btn-danger" onClick={onConfirm} disabled={loading}>
-            {loading ? 'Eliminando…' : 'Eliminar'}
+          <button className={`btn ${confirmClassName}`} onClick={onConfirm} disabled={loading}>
+            {loading ? loadingLabel : confirmLabel}
           </button>
         </div>
       </div>

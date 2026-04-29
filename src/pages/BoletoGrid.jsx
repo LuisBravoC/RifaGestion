@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef } from 'react'
-import { useParams, useNavigate } from 'react-router-dom'
+import { useParams, useNavigate, Link } from 'react-router-dom'
 import {
   Trophy, Search, Plus, X, CheckCircle2, Trash2,
   MessageCircle, Calendar, DollarSign, Zap, Clock, UserPlus,
@@ -154,6 +154,8 @@ export default function BoletoGrid() {
   )
 
   const boletosLiqDisp = stats.Liquidado - ganadores.length
+  // Mapa boletoId → participante_id (fuente fiable, no depende del JSON guardado)
+  const boletoPartMap = Object.fromEntries(boletos.map(b => [b.id, b.participante_id]))
 
   return (
     <>
@@ -330,11 +332,19 @@ export default function BoletoGrid() {
                 <RotateCcw size={13} /> Reiniciar sorteo
               </button>
             </div>
-            {ganadores.map((g, i) => (
+            {ganadores.map((g, i) => {
+              const partId = boletoPartMap[g.id] ?? g.participante_id ?? g.participantes?.id
+              return (
               <div key={g.id} className="ganador-row">
                 <span className="ganador-lugar">{(['1er','2do','3er'][i] ?? `${i+1}to`)} lugar</span>
                 <span className="ganador-num">#{fmtNum(g.numero_asignado, total)}</span>
-                <span className="ganador-nombre">{g.participantes?.nombre_completo ?? '—'}</span>
+                <span className="ganador-nombre">
+                  {g.participantes?.nombre_completo
+                    ? partId
+                      ? <Link to={`/participantes/${partId}`} style={{ color: 'inherit', textDecoration: 'underline', textDecorationColor: 'var(--border)' }}>{g.participantes.nombre_completo}</Link>
+                      : g.participantes.nombre_completo
+                    : '—'}
+                </span>
                 {g.participantes?.telefono_whatsapp && (
                   <span style={{ fontSize: '.8rem', color: 'var(--text-muted)' }}>
                     {g.participantes.telefono_whatsapp}
@@ -349,7 +359,7 @@ export default function BoletoGrid() {
                   <Trash2 size={13} />
                 </button>
               </div>
-            ))}
+            )})}
             {boletosLiqDisp > 0 && (
               <button className="btn btn-outline" style={{ marginTop: '.75rem' }} onClick={handleElegirGanador}>
                 <Trophy size={14} /> Elegir {ganadores.length + 1}er lugar ({boletosLiqDisp} disponibles)

@@ -338,6 +338,9 @@ export default function ParticipanteDetail() {
           onConfirm={handleLiquidarBoleto}
           onCancel={() => setConfirmLiq(null)}
           loading={saving}
+          confirmLabel="Liquidar"
+          loadingLabel="Liquidando…"
+          confirmClassName="btn-primary"
         />
       )}
 
