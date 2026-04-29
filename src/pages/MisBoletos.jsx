@@ -1,22 +1,10 @@
 import { useState } from 'react'
 import { Link } from 'react-router-dom'
 import { Ticket, Search, Phone, CheckCircle2, Clock, AlertCircle } from 'lucide-react'
-import { fmt } from '../lib/formatters.js'
+import { fmt, fmtNum, fmtDate } from '../lib/formatters.js'
 import { getMisBoletos } from '../lib/rifas-queries.js'
 import ProgressBar from '../components/ProgressBar.jsx'
 import StatusBadge from '../components/StatusBadge.jsx'
-
-/** Formatea número de boleto con ceros a la izquierda */
-function fmtNum(n, total) {
-  const digits = (total ?? 100) <= 100 ? 2 : String(total).length
-  return String(n).padStart(digits, '0')
-}
-
-function fmtDate(d) {
-  if (!d) return '—'
-  const raw = typeof d === 'string' && d.length === 10 ? d + 'T12:00:00' : d
-  return new Date(raw).toLocaleDateString('es-MX', { day: '2-digit', month: 'short', year: 'numeric' })
-}
 
 export default function MisBoletos() {
   const [telefono,  setTelefono]  = useState('')

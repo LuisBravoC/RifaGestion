@@ -3,7 +3,7 @@ import { useNavigate, useParams } from 'react-router-dom'
 import { Ticket, Trophy, Calendar, DollarSign, ArrowRight, Pencil, Trash2, Plus, Hash } from 'lucide-react'
 import { useQuery } from '../lib/useQuery.js'
 import { useToast } from '../lib/toast.jsx'
-import { fmt } from '../lib/formatters.js'
+import { fmt, fmtDate } from '../lib/formatters.js'
 import * as q from '../lib/rifas-queries.js'
 import Breadcrumbs from '../components/Breadcrumbs.jsx'
 import { useBreadcrumbs } from '../lib/useBreadcrumbs.js'
@@ -28,11 +28,6 @@ const EMPTY = {
 }
 
 const ESTATUS_RIFA = ['Activa', 'Finalizada', 'Cancelada']
-
-function fmtDate(d) {
-  if (!d) return '—'
-  return new Date(d + 'T12:00:00').toLocaleDateString('es-MX', { day: '2-digit', month: 'short', year: 'numeric' })
-}
 
 export default function SorteosList() {
   const { campanaId } = useParams()

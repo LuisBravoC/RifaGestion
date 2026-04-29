@@ -4,25 +4,10 @@ import {
   Search, Plus, X, CheckCircle2, Trash2,
   MessageCircle, Zap, Clock, UserPlus, ArrowRight,
 } from 'lucide-react'
-import { fmt } from '../lib/formatters.js'
+import { fmt, fmtNum, fmtDate, today } from '../lib/formatters.js'
 import * as q from '../lib/rifas-queries.js'
 import ProgressBar from './ProgressBar.jsx'
 import { parseError } from '../lib/parseError.js'
-
-// ── Utilidades locales ────────────────────────────────────────────────────────
-
-function fmtNum(n, total) {
-  const digits = total <= 100 ? 2 : String(total).length
-  return String(n).padStart(digits, '0')
-}
-
-const today = () => new Date().toISOString().slice(0, 10)
-
-function fmtDate(d) {
-  if (!d) return '—'
-  const raw = typeof d === 'string' && d.length === 10 ? d + 'T12:00:00' : d
-  return new Date(raw).toLocaleDateString('es-MX', { day: '2-digit', month: 'short', year: 'numeric' })
-}
 
 function WhatsAppLink({ nombre, telefono, saldo }) {
   const phone = '52' + (telefono ?? '').replace(/\D/g, '')

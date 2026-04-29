@@ -1,10 +1,4 @@
-import { fmt } from './formatters.js'
-
-function fmtDate(d) {
-  if (!d) return '—'
-  const raw = typeof d === 'string' && d.length === 10 ? d + 'T12:00:00' : d
-  return new Date(raw).toLocaleDateString('es-MX', { day: '2-digit', month: 'short', year: 'numeric' })
-}
+import { fmt, fmtDate } from './formatters.js'
 
 /**
  * Abre una ventana con el PDF de la rifa y lanza el diálogo de impresión.

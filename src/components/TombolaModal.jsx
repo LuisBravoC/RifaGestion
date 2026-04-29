@@ -1,9 +1,5 @@
 import { useState, useEffect, useRef, useMemo } from 'react'
-
-function fmtNum(n, total) {
-  const digits = total <= 100 ? 2 : String(total).length
-  return String(n).padStart(digits, '0')
-}
+import { fmtNum } from '../lib/formatters.js'
 
 export default function TombolaModal({ ganador, lugar, total, onClose }) {
   const winnerNum = ganador.numero_asignado
