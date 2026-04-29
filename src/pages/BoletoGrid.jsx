@@ -133,8 +133,11 @@ export default function BoletoGrid() {
         const p = await q.insertParticipante(nuevoPart)
         pid = p.id
       }
-      await q.asignarBoleto(panel.boleto.id, pid, montoAbono)
-      toast(`Boleto #${fmtNum(panel.boleto.numero_asignado, rifaQ.data?.cantidad_boletos)} apartado`)
+      await q.asignarBoleto(panel.boleto.id, pid, montoAbono, panel.boleto.precio_boleto)
+      const fueCompleto = Number(montoAbono) >= Number(panel.boleto.precio_boleto)
+      toast(fueCompleto
+        ? `Boleto #${fmtNum(panel.boleto.numero_asignado, rifaQ.data?.cantidad_boletos)} pagado y liquidado 🎉`
+        : `Boleto #${fmtNum(panel.boleto.numero_asignado, rifaQ.data?.cantidad_boletos)} apartado`)
       closePanel(); setRefresh(r => r + 1)
     } catch (e) { showErr(e) }
     finally { setSaving(false) }

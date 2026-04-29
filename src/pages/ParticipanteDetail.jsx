@@ -3,6 +3,7 @@ import { Link, useNavigate, useParams } from 'react-router-dom'
 import {
   Users, Phone, Mail, Pencil, Trash2, CheckCircle2,
   Clock, AlertCircle, Trophy, Calendar, ArrowRight, ExternalLink, DollarSign,
+  CreditCard,
 } from 'lucide-react'
 import { useQuery } from '../lib/useQuery.js'
 import { useToast } from '../lib/toast.jsx'
@@ -37,6 +38,8 @@ const STATUS_INFO = {
   Vencido:   { label: '🔴 Vencido',   cls: 'badge-deuda',     icon: AlertCircle },
 }
 
+const today = () => new Date().toISOString().slice(0, 10)
+
 // ── Componente principal ──────────────────────────────────────────────────────
 
 export default function ParticipanteDetail() {
@@ -59,6 +62,11 @@ export default function ParticipanteDetail() {
   const showErr = e => setErrModal(typeof e === 'string' ? { title: 'Aviso', body: e } : (e?.title ? e : parseError(e)))
 
   const set = (k, v) => setForm(f => ({ ...f, [k]: v }))
+
+  // Estado para pago rápido / liquidar desde el perfil
+  const [drawerPago, setDrawerPago] = useState(null)  // { boleto }
+  const [formPago,   setFormPago]   = useState({ monto: '', fecha: today(), metodo_pago: 'Efectivo' })
+  const [confirmLiq, setConfirmLiq] = useState(null)  // { boleto }
 
   function openEdit() {
     const p = data.participante
@@ -86,6 +94,40 @@ export default function ParticipanteDetail() {
       if (err) throw err
       toast('Participante eliminado')
       navigate('/participantes', { replace: true })
+    } catch (e) { showErr(e) }
+    finally { setSaving(false) }
+  }
+
+  async function handleSavePago() {
+    const monto = Number(formPago.monto)
+    if (!monto || monto <= 0) { showErr('Ingresa un monto válido.'); return }
+    setSaving(true)
+    try {
+      const b = drawerPago.boleto
+      await q.insertPagoRifa({ boleto_id: b.id, ...formPago, monto })
+      // Si el pago cubre o supera el saldo pendiente, liquidar automáticamente
+      if (monto >= Number(b.saldo_pendiente)) {
+        await q.liquidarBoleto(b.id, 0) // el pago ya fue insertado arriba
+        toast(`Boleto #${fmtNum(b.numero_asignado, b.cantidad_boletos)} liquidado 🎉`)
+      } else {
+        toast('Pago registrado')
+      }
+      setDrawerPago(null)
+      setFormPago({ monto: '', fecha: today(), metodo_pago: 'Efectivo' })
+      setRefresh(r => r + 1)
+    } catch (e) { showErr(e) }
+    finally { setSaving(false) }
+  }
+
+  async function handleLiquidarBoleto() {
+    if (!confirmLiq) return
+    setSaving(true)
+    try {
+      const b = confirmLiq.boleto
+      await q.liquidarBoleto(b.id, b.saldo_pendiente)
+      toast(`Boleto #${fmtNum(b.numero_asignado, b.cantidad_boletos)} liquidado 🎉`)
+      setConfirmLiq(null)
+      setRefresh(r => r + 1)
     } catch (e) { showErr(e) }
     finally { setSaving(false) }
   }
@@ -158,7 +200,7 @@ export default function ParticipanteDetail() {
 
         {/* ── Resumen global de pagos ── */}
         {globalStats.total > 0 && (
-          <div className="grid grid-stats" style={{ marginBottom: '1.5rem' }}>
+          <div className="part-stats-grid" style={{ marginBottom: '1.5rem' }}>
             <div className="card stat-card">
               <div className="stat-value" style={{ color: 'var(--accent-light)' }}>{globalStats.total}</div>
               <div className="stat-label">Boletos totales</div>
@@ -192,7 +234,16 @@ export default function ParticipanteDetail() {
               Boletos por sorteo ({rifas.length} {rifas.length === 1 ? 'rifa' : 'rifas'})
             </p>
             {rifas.map(rifa => (
-              <RifaSection key={rifa.rifa_id} rifa={rifa} />
+              <RifaSection
+                key={rifa.rifa_id}
+                rifa={rifa}
+                isAdmin={isAdmin}
+                onPagar={b => {
+                  setFormPago({ monto: '', fecha: today(), metodo_pago: 'Efectivo' })
+                  setDrawerPago({ boleto: b })
+                }}
+                onLiquidar={b => setConfirmLiq({ boleto: b })}
+              />
             ))}
           </>
         )}
@@ -230,6 +281,66 @@ export default function ParticipanteDetail() {
         />
       )}
 
+      {/* Drawer pago rápido */}
+      {drawerPago && (
+        <Drawer
+          title={`Pago — Boleto #${fmtNum(drawerPago.boleto.numero_asignado, drawerPago.boleto.cantidad_boletos)}`}
+          onClose={() => setDrawerPago(null)}
+          onSave={handleSavePago}
+          saving={saving}
+        >
+          <p style={{ fontSize: '.85rem', color: 'var(--text-muted)', marginBottom: '1rem' }}>
+            Saldo pendiente:{' '}
+            <strong style={{ color: 'var(--abonado)' }}>
+              {fmt(Math.max(0, Number(drawerPago.boleto.saldo_pendiente)))}
+            </strong>
+          </p>
+          <div className="field">
+            <label>Monto *</label>
+            <input
+              type="number" min="0.01" step="0.01"
+              value={formPago.monto}
+              onChange={e => setFormPago(f => ({ ...f, monto: e.target.value }))}
+              autoFocus
+            />
+          </div>
+          <div className="field">
+            <label>Fecha</label>
+            <input
+              type="date"
+              value={formPago.fecha}
+              onChange={e => setFormPago(f => ({ ...f, fecha: e.target.value }))}
+            />
+          </div>
+          <div className="field">
+            <label>Método de pago</label>
+            <select
+              value={formPago.metodo_pago}
+              onChange={e => setFormPago(f => ({ ...f, metodo_pago: e.target.value }))}
+            >
+              <option>Efectivo</option>
+              <option>Transferencia</option>
+              <option>Tarjeta</option>
+              <option>Otro</option>
+            </select>
+          </div>
+        </Drawer>
+      )}
+
+      {/* Confirm liquidar */}
+      {confirmLiq && (
+        <ConfirmModal
+          message={`¿Liquidar boleto #${fmtNum(confirmLiq.boleto.numero_asignado, confirmLiq.boleto.cantidad_boletos)}? ${
+            Number(confirmLiq.boleto.saldo_pendiente) > 0
+              ? `Se marcará ${fmt(Number(confirmLiq.boleto.saldo_pendiente))} como pagado.`
+              : 'El boleto ya está completamente pagado.'
+          }`}
+          onConfirm={handleLiquidarBoleto}
+          onCancel={() => setConfirmLiq(null)}
+          loading={saving}
+        />
+      )}
+
       {errModal && <ErrorModal {...errModal} onClose={() => setErrModal(null)} />}
     </>
   )
@@ -237,7 +348,7 @@ export default function ParticipanteDetail() {
 
 // ── Sección de una rifa con sus boletos ────────────────────────────────────────
 
-function RifaSection({ rifa }) {
+function RifaSection({ rifa, isAdmin, onPagar, onLiquidar }) {
   const boletos = rifa.boletos ?? []
   const total   = rifa.cantidad_boletos
   const meta    = Number(rifa.precio_boleto) * boletos.length
@@ -296,7 +407,9 @@ function RifaSection({ rifa }) {
 
       {/* Lista de boletos */}
       <div className="part-boletos-list">
-        {boletos.map(b => <BoletoRow key={b.id} boleto={b} total={total} />)}
+        {boletos.map(b => (
+          <BoletoRow key={b.id} boleto={b} total={total} isAdmin={isAdmin} onPagar={onPagar} onLiquidar={onLiquidar} />
+        ))}
       </div>
     </div>
   )
@@ -304,8 +417,8 @@ function RifaSection({ rifa }) {
 
 // ── Fila individual de boleto ──────────────────────────────────────────────────
 
-function BoletoRow({ boleto: b, total }) {
-  const si   = STATUS_INFO[b.estatus] ?? { label: b.estatus, cls: 'badge-abonado' }
+function BoletoRow({ boleto: b, total, isAdmin, onPagar, onLiquidar }) {
+  const si    = STATUS_INFO[b.estatus] ?? { label: b.estatus, cls: 'badge-abonado' }
   const saldo = Math.max(0, Number(b.saldo_pendiente))
 
   return (
@@ -337,6 +450,28 @@ function BoletoRow({ boleto: b, total }) {
         <span style={{ fontSize: '.72rem', color: 'var(--text-muted)', flexShrink: 0 }}>
           <Clock size={10} /> {new Date(b.fecha_apartado).toLocaleDateString('es-MX')}
         </span>
+      )}
+
+      {/* Acciones rápidas — solo en boletos Apartados para admins */}
+      {isAdmin && b.estatus === 'Apartado' && (
+        <div style={{ display: 'flex', gap: '.35rem', marginLeft: 'auto', flexShrink: 0 }}>
+          <button
+            className="btn btn-outline btn-sm"
+            style={{ padding: '.25rem .6rem', fontSize: '.75rem' }}
+            onClick={() => onPagar?.(b)}
+            title="Registrar pago"
+          >
+            <CreditCard size={12} /> Pagar
+          </button>
+          <button
+            className="btn btn-sm"
+            style={{ padding: '.25rem .6rem', fontSize: '.75rem', background: 'var(--liquidado)', color: '#fff', border: 'none' }}
+            onClick={() => onLiquidar?.(b)}
+            title="Liquidar boleto"
+          >
+            <CheckCircle2 size={12} /> Liquidar
+          </button>
+        </div>
       )}
     </div>
   )

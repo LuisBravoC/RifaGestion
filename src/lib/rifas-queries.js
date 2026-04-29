@@ -211,21 +211,27 @@ export async function getBoleto(id) {
 
 /**
  * Aparta un boleto asignando participante y registrando abono inicial (opcional).
+ * Si montoInicial cubre el precio_boleto completo, el boleto queda Liquidado directamente.
  */
-export async function asignarBoleto(boletoId, participanteId, montoInicial) {
+export async function asignarBoleto(boletoId, participanteId, montoInicial, precioBoleto) {
+  const monto  = Number(montoInicial) || 0
+  const precio = Number(precioBoleto) || 0
+  // Liquidar directamente si el abono cubre el precio total
+  const nuevoEstatus = (precio > 0 && monto >= precio) ? 'Liquidado' : 'Apartado'
+
   check(
     await supabase.from('boletos').update({
       participante_id: participanteId,
-      estatus:         'Apartado',
+      estatus:         nuevoEstatus,
       fecha_apartado:  new Date().toISOString(),
     }).eq('id', boletoId),
     'asignarBoleto'
   )
-  if (montoInicial && Number(montoInicial) > 0) {
+  if (monto > 0) {
     check(
       await supabase.from('historial_pagos_rifa').insert({
         boleto_id:   boletoId,
-        monto:       Number(montoInicial),
+        monto,
         fecha:       new Date().toISOString().slice(0, 10),
         metodo_pago: 'Efectivo',
       }),

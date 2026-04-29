@@ -2584,3 +2584,16 @@ html.google .stat-label {
   flex: 1;
   flex-wrap: wrap;
 }
+
+/* Stats centradas en perfil de participante */
+.part-stats-grid {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 1rem;
+  justify-content: center;
+  margin-bottom: 1.5rem;
+}
+.part-stats-grid .card {
+  flex: 1 1 150px;
+  max-width: 220px;
+}
