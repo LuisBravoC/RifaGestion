@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from 'react'
+import { useState, useEffect, useRef, useMemo } from 'react'
 import { useParams, useNavigate, Link } from 'react-router-dom'
 import {
   Trophy, Search, Plus, X, CheckCircle2, Trash2,
@@ -100,27 +100,32 @@ export default function BoletoGrid() {
   const rifa    = rifaQ.data
   const crumbs  = useBreadcrumbs({ campanaId: campana?.nombre, rifaId: rifa?.nombre_premio })
 
-  if (campanaQ.loading || rifaQ.loading || boletosQ.loading)
-    return <><Breadcrumbs crumbs={crumbs} /><LoadingSpinner text="Cargando cuadrícula…" /></>
-  if (!rifa) return <ErrorMsg message="Rifa no encontrada" />
-
+  // Los hooks deben ir ANTES de cualquier early return (Reglas de Hooks)
   const boletos = boletosQ.data ?? []
-  const total   = rifa.cantidad_boletos
-  const meta    = Number(rifa.precio_boleto) * total
 
-  // Estadísticas en tiempo real desde los boletos cargados
-  const stats = boletos.reduce(
+  // Estadísticas memoizadas — solo se recalculan cuando cambia el array de boletos
+  const stats = useMemo(() => boletos.reduce(
     (acc, b) => {
       acc[b.estatus] = (acc[b.estatus] || 0) + 1
       acc.recaudado  += Number(b.total_pagado)
       return acc
     },
     { Disponible: 0, Apartado: 0, Liquidado: 0, Vencido: 0, recaudado: 0 }
+  ), [boletos])
+
+  // Mapa boletoId → participante_id memoizado
+  const boletoPartMap = useMemo(
+    () => Object.fromEntries(boletos.map(b => [b.id, b.participante_id])),
+    [boletos]
   )
 
+  if (campanaQ.loading || rifaQ.loading || boletosQ.loading)
+    return <><Breadcrumbs crumbs={crumbs} /><LoadingSpinner text="Cargando cuadrícula…" /></>
+  if (!rifa) return <ErrorMsg message="Rifa no encontrada" />
+
+  const total          = rifa.cantidad_boletos
+  const meta           = Number(rifa.precio_boleto) * total
   const boletosLiqDisp = stats.Liquidado - ganadores.length
-  // Mapa boletoId → participante_id (fuente fiable, no depende del JSON guardado)
-  const boletoPartMap = Object.fromEntries(boletos.map(b => [b.id, b.participante_id]))
 
   return (
     <>

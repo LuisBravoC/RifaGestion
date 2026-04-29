@@ -48,10 +48,12 @@ export function csvEsc(v) {
  */
 export function buildImportPreview(csvText, boletos) {
   const rows = parseCSV(csvText)
+  // Map por numero_asignado para lookup O(1) en lugar de O(n) por fila
+  const boletoMap = new Map(boletos.map(b => [b.numero_asignado, b]))
   return rows.map(r => {
     const num    = Number(r['numero'] || r['n\u00famero'] || r['#'] || '')
     const nombre = (r['nombre'] ?? '').trim()
-    const boleto = boletos.find(b => b.numero_asignado === num)
+    const boleto = boletoMap.get(num)
     let status = 'ok'
     if (!nombre)                              status = 'vacio'
     else if (!boleto)                         status = 'no-existe'
