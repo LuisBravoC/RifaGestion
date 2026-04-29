@@ -57,8 +57,7 @@ export default function ParticipantesList() {
   async function handleDelete() {
     setSaving(true)
     try {
-      // Supabase cascade borrará las asignaciones de boletos (ON DELETE SET NULL)
-      await supabaseDeleteParticipante(confirm)
+      await q.deleteParticipante(confirm)
       toast('Participante eliminado')
       setConfirm(null)
       setRefresh(r => r + 1)

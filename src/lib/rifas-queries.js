@@ -403,6 +403,13 @@ export async function buscarParticipantes(query) {
   return data ?? []
 }
 
+export async function deleteParticipante(id) {
+  return check(
+    await supabase.from('participantes').delete().eq('id', id),
+    'deleteParticipante'
+  )
+}
+
 // =============================================================================
 // PAGOS
 // =============================================================================
