@@ -12,6 +12,7 @@ import BoletoGrid from './pages/BoletoGrid.jsx'
 import MisBoletos from './pages/MisBoletos.jsx'
 import ParticipantesList from './pages/ParticipantesList.jsx'
 import ParticipanteDetail from './pages/ParticipanteDetail.jsx'
+import HistorialPagos from './pages/HistorialPagos.jsx'
 
 function AppShell() {
   const { session } = useAuth()
@@ -31,6 +32,7 @@ function AppShell() {
           {/* Rutas protegidas — Participantes */}
           <Route path="/participantes" element={<ProtectedRoute><ParticipantesList /></ProtectedRoute>} />
           <Route path="/participantes/:partId" element={<ProtectedRoute><ParticipanteDetail /></ProtectedRoute>} />
+          <Route path="/historial" element={<ProtectedRoute><HistorialPagos /></ProtectedRoute>} />
 
           <Route path="*" element={<Navigate to="/rifas" replace />} />
         </Routes>

@@ -1,5 +1,5 @@
 import { Link, NavLink, useNavigate } from 'react-router-dom'
-import { Ticket, Search, X, Settings, LogOut, Menu, Users } from 'lucide-react'
+import { Ticket, Search, X, Settings, LogOut, Menu, Users, CreditCard } from 'lucide-react'
 import { useState, useRef, useEffect, useCallback } from 'react'
 import { buscarParticipantes } from '../lib/rifas-queries.js'
 import { useAuth } from '../lib/AuthContext.jsx'
@@ -108,6 +108,9 @@ export default function Topbar() {
           <NavLink to="/participantes" className={({ isActive }) => 'topbar-nav-link' + (isActive ? ' active' : '')}>
             <Users size={15} /> <span className="nav-label">Participantes</span>
           </NavLink>
+          <NavLink to="/historial" className={({ isActive }) => 'topbar-nav-link' + (isActive ? ' active' : '')}>
+            <CreditCard size={15} /> <span className="nav-label">Historial</span>
+          </NavLink>
           <NavLink to="/opciones" className={({ isActive }) => 'topbar-nav-link' + (isActive ? ' active' : '')}>
             <Settings size={15} /> <span className="nav-label">Opciones</span>
           </NavLink>
@@ -134,6 +137,9 @@ export default function Topbar() {
             </NavLink>
             <NavLink to="/participantes" className={({ isActive }) => 'mobile-nav-link' + (isActive ? ' active' : '')} onClick={() => setMenuOpen(false)}>
               <Users size={16} /> Participantes
+            </NavLink>
+            <NavLink to="/historial" className={({ isActive }) => 'mobile-nav-link' + (isActive ? ' active' : '')} onClick={() => setMenuOpen(false)}>
+              <CreditCard size={16} /> Historial
             </NavLink>
             <NavLink to="/opciones" className={({ isActive }) => 'mobile-nav-link' + (isActive ? ' active' : '')} onClick={() => setMenuOpen(false)}>
               <Settings size={16} /> Opciones

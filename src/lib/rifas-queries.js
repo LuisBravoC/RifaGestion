@@ -454,6 +454,38 @@ export async function getPagosByBoleto(boletoId) {
   )
 }
 
+/**
+ * Historial global de pagos con información del boleto, rifa, campaña y participante.
+ * Soporta paginación y filtro por campana.
+ */
+export async function getHistorialGlobal({ campanaId = null, page = 0, pageSize = 50 } = {}) {
+  let query = supabase
+    .from('historial_pagos_rifa')
+    .select(`
+      id, monto, fecha, metodo_pago,
+      boleto:boletos(
+        id, numero_asignado, estatus,
+        nombre_participante,
+        participante_id,
+        participantes(id, nombre_completo, telefono_whatsapp),
+        rifa:rifas(id, nombre_premio, campana_id, precio_boleto,
+          campana:campanas(id, nombre))
+      )
+    `, { count: 'exact' })
+    .order('fecha', { ascending: false })
+    .order('id',    { ascending: false })
+    .range(page * pageSize, (page + 1) * pageSize - 1)
+
+  if (campanaId) {
+    // Filtrar a través de la relación boleto → rifa → campana
+    query = query.eq('boleto.rifa.campana_id', campanaId)
+  }
+
+  const { data, error, count } = await query
+  if (error) { console.error('[rifas] getHistorialGlobal', error); throw error }
+  return { pagos: data ?? [], total: count ?? 0 }
+}
+
 export async function insertPagoRifa(data) {
   return check(
     await supabase.from('historial_pagos_rifa').insert(data).select().single(),
