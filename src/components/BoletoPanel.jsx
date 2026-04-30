@@ -6,6 +6,7 @@ import {
 } from 'lucide-react'
 import { fmt, fmtNum, fmtDate, today } from '../lib/formatters.js'
 import * as q from '../lib/rifas-queries.js'
+import { useQuery } from '../lib/useQuery.js'
 import ProgressBar from './ProgressBar.jsx'
 import { parseError } from '../lib/parseError.js'
 import WhatsAppBtn from './WhatsAppBtn.jsx'
@@ -36,8 +37,10 @@ export default function BoletoPanel({ boleto: boletoInicial, rifa, total, isAdmi
   const [partResults, setPartResults]           = useState([])
   const [partSeleccionado, setPartSeleccionado] = useState(null)
   const [showNewForm, setShowNewForm]           = useState(false)
-  const [nuevoPart, setNuevoPart]               = useState({ nombre_completo: '', telefono_whatsapp: '' })
+  const [nuevoPart, setNuevoPart]               = useState({ nombre_completo: '', telefono_whatsapp: '', grupo_id: '' })
   const [montoAbono, setMontoAbono]             = useState('')
+
+  const { data: grupos } = useQuery(() => q.getGrupos(), [])
 
   // ── Estado modo "gestionar" ───────────────────────────────────────────────
   const [pagos, setPagos]                 = useState([])
@@ -80,7 +83,13 @@ export default function BoletoPanel({ boleto: boletoInicial, rifa, total, isAdmi
       let pid = partSeleccionado?.id
       let nombre = partSeleccionado?.nombre_completo
       if (!pid) {
-        const p = await q.insertParticipante(nuevoPart)
+        // Si no se escogió grupo, asignar automáticamente "Otros"
+        let grupo_id = nuevoPart.grupo_id || null
+        if (!grupo_id) {
+          const otros = (grupos ?? []).find(g => g.nombre.toLowerCase() === 'otros')
+          grupo_id = otros?.id ?? null
+        }
+        const p = await q.insertParticipante({ ...nuevoPart, grupo_id })
         pid    = p.id
         nombre = nuevoPart.nombre_completo
       }
@@ -286,10 +295,23 @@ export default function BoletoPanel({ boleto: boletoInicial, rifa, total, isAdmi
                       type="tel"
                     />
                   </div>
+                  <div className="field">
+                    <label>Grupo social</label>
+                    <select
+                      value={nuevoPart.grupo_id}
+                      onChange={e => setNuevoPart(f => ({ ...f, grupo_id: e.target.value }))}
+                      style={{ background: 'var(--bg)', border: '1px solid var(--border)', borderRadius: 'var(--radius)', padding: '.45rem .75rem', color: 'var(--text)', fontSize: '.875rem', width: '100%' }}
+                    >
+                      <option value="">— Sin grupo (Otros por defecto) —</option>
+                      {(grupos ?? []).map(g => (
+                        <option key={g.id} value={g.id}>{g.nombre}</option>
+                      ))}
+                    </select>
+                  </div>
                   <button
                     className="btn btn-sm btn-outline"
                     style={{ marginBottom: '.75rem' }}
-                    onClick={() => { setShowNewForm(false); setNuevoPart({ nombre_completo: '', telefono_whatsapp: '' }) }}
+                    onClick={() => { setShowNewForm(false); setNuevoPart({ nombre_completo: '', telefono_whatsapp: '', grupo_id: '' }) }}
                   >
                     <X size={13} /> Cancelar
                   </button>

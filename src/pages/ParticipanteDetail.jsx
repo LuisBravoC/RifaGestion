@@ -60,7 +60,12 @@ export default function ParticipanteDetail() {
     if (!form.nombre_completo.trim()) { showErr('El nombre es obligatorio.'); return }
     setSaving(true)
     try {
-      await q.updateParticipante(partId, form)
+      let grupo_id = form.grupo_id || null
+      if (!grupo_id) {
+        const otros = (grupos ?? []).find(g => g.nombre.toLowerCase() === 'otros')
+        grupo_id = otros?.id ?? null
+      }
+      await q.updateParticipante(partId, { ...form, grupo_id })
       toast('Datos actualizados')
       setDrawerEdit(false)
       refetch()

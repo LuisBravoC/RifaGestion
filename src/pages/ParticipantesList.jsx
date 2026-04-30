@@ -49,8 +49,15 @@ export default function ParticipantesList() {
     if (!form.nombre_completo.trim()) { showErr('El nombre del participante es obligatorio.'); return }
     setSaving(true)
     try {
-      if (drawer.mode === 'create') await q.insertParticipante(form)
-      else await q.updateParticipante(drawer.record.id, form)
+      // Si no se escogió grupo, asignar automáticamente "Otros"
+      let grupo_id = form.grupo_id || null
+      if (!grupo_id) {
+        const otros = (grupos ?? []).find(g => g.nombre.toLowerCase() === 'otros')
+        grupo_id = otros?.id ?? null
+      }
+      const payload = { ...form, grupo_id }
+      if (drawer.mode === 'create') await q.insertParticipante(payload)
+      else await q.updateParticipante(drawer.record.id, payload)
       done(drawer.mode === 'create' ? 'Participante registrado' : 'Participante actualizado')
     } catch (e) { showErr(e) }
     finally { setSaving(false) }
