@@ -276,7 +276,7 @@ export default function Opciones() {
               <div className="opciones-item-icon"><Info size={18} /></div>
               <div className="opciones-item-body">
                 <span className="opciones-item-label">RifaGestión</span>
-                <span className="opciones-item-desc">Versión 1.0 · Gestión de rifas y sorteos</span>
+                <span className="opciones-item-desc">Versión 1.1 · Gestión de rifas y sorteos</span>
               </div>
             </div>
           </OptionGroup>
