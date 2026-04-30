@@ -1,4 +1,4 @@
-import { useState, useMemo } from 'react'
+import { useState, useMemo, useEffect, useRef } from 'react'
 import { Link } from 'react-router-dom'
 import { ClipboardList, ChevronLeft, ChevronRight, ArrowRight, X } from 'lucide-react'
 import { useQuery } from '../lib/useQuery.js'
@@ -117,6 +117,13 @@ export default function Bitacora() {
   const crumbs = [{ label: 'Bitácora de movimientos' }]
 
   const hayFiltros = campanaId || rifaId || estatusNuevo || grupoId || fechaDesde || fechaHasta || busqueda
+
+  const filterKey = `${campanaId}|${rifaId}|${estatusNuevo}|${grupoId}|${fechaDesde}|${fechaHasta}|${busqueda}|${page}`
+  const [committedKey, setCommittedKey] = useState(filterKey)
+  const filterKeyRef = useRef(filterKey)
+  filterKeyRef.current = filterKey
+  useEffect(() => { setCommittedKey(filterKeyRef.current) }, [bitacoraQ.data])
+  const isFetching = filterKey !== committedKey
 
   function resetFiltros() {
     setCampanaId(''); setRifaId(''); setEstatusNuevo(''); setGrupoId('')
@@ -243,9 +250,9 @@ export default function Bitacora() {
             <span style={{ fontSize: '.8rem' }}>Los movimientos se registran automáticamente desde que se activa el trigger en la base de datos.</span>
           </p>
         ) : (
-          <>
+          <div style={{ opacity: isFetching ? 0.45 : 1, transition: 'opacity .18s ease' }}>
             {/* Tabla desktop */}
-            <div className="card historial-table-wrap" style={{ overflow: 'hidden', padding: 0 }}>
+            <div className="card historial-table-wrap" key={committedKey} style={{ overflow: 'hidden', padding: 0, animation: 'boleto-view-in .22s ease both' }}>
               <div style={{ overflowX: 'auto' }}>
                 <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '.875rem' }}>
                   <thead>
@@ -380,7 +387,7 @@ export default function Bitacora() {
                 </button>
               </div>
             )}
-          </>
+          </div>
         )}
       </div>
     </>

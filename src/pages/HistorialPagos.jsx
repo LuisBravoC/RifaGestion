@@ -1,4 +1,4 @@
-import { useState, useMemo } from 'react'
+import { useState, useMemo, useEffect, useRef } from 'react'
 import { Link } from 'react-router-dom'
 import { CreditCard, ChevronLeft, ChevronRight, ArrowRight } from 'lucide-react'
 import { useQuery } from '../lib/useQuery.js'
@@ -23,6 +23,15 @@ export default function HistorialPagos() {
 
   const { pagos = [], total = 0 } = historialQ.data ?? {}
   const totalPages = Math.ceil(total / PAGE_SIZE)
+
+  // Clave que solo se actualiza cuando los datos nuevos ya llegaron
+  // Clave que solo se actualiza cuando los datos nuevos ya llegaron
+  const filterKey = `${campanaId}|${page}`
+  const [committedKey, setCommittedKey] = useState(filterKey)
+  const filterKeyRef = useRef(filterKey)
+  filterKeyRef.current = filterKey
+  useEffect(() => { setCommittedKey(filterKeyRef.current) }, [historialQ.data])
+  const isFetching = filterKey !== committedKey
 
   // Totales de la página actual
   const totalPagina = useMemo(() => pagos.reduce((s, p) => s + Number(p.monto), 0), [pagos])
@@ -66,7 +75,7 @@ export default function HistorialPagos() {
         ) : pagos.length === 0 ? (
           <p style={{ color: 'var(--text-muted)', textAlign: 'center', marginTop: '3rem' }}>Sin pagos registrados.</p>
         ) : (
-          <>
+          <div key={committedKey} style={{ animation: 'boleto-view-in .22s ease both', opacity: isFetching ? 0.45 : 1, transition: 'opacity .18s ease' }}>
             <div className="card historial-table-wrap" style={{ overflow: 'hidden', padding: 0 }}>
               <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '.875rem' }}>
                 <thead>
@@ -187,7 +196,7 @@ export default function HistorialPagos() {
                 </button>
               </div>
             )}
-          </>
+          </div>
         )}
       </div>
     </>

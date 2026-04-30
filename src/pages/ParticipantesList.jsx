@@ -150,7 +150,7 @@ export default function ParticipantesList() {
         )}
 
         {viewMode === 'cards' ? (
-          <div className="grid grid-auto">
+          <div className="grid grid-auto" key={`${viewMode}|${grupoFiltro}|${search}`} style={{ animation: 'boleto-view-in .5s ease both' }}>
             {list.map(p => (
               <ParticipanteCard
                 key={p.id}
@@ -167,7 +167,7 @@ export default function ParticipantesList() {
             )}
           </div>
         ) : (
-          <div className="part-list-container">
+          <div className="part-list-container" key={`${viewMode}|${grupoFiltro}|${search}`} style={{ animation: 'boleto-view-in .5s ease both' }}>
             {list.map(p => (
               <ParticipanteRow
                 key={p.id}
