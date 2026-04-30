@@ -76,7 +76,7 @@ export default function MisBoletos() {
           <Ticket size={24} />
           <span>Mis Boletos</span>
         </div>
-        <Link to="/login" className="mis-boletos-admin-link">Panel admin →</Link>
+        <Link to="/" className="mis-boletos-admin-link">Panel admin →</Link>
       </header>
 
       <main className="mis-boletos-main">
