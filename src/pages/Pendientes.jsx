@@ -15,6 +15,9 @@ export default function Pendientes() {
   const [rifaId,    setRifaId]    = useState('')
   const [estatus,   setEstatus]   = useState('')
   const [grupoId,   setGrupoId]   = useState('')
+  const [openMap,   setOpenMap]   = useState({})  // rifaId → boolean
+
+  const toggleGrupo = (id) => setOpenMap(m => ({ ...m, [id]: !m[id] }))
 
   const campanasQ = useQuery(() => getCampanas(), [])
   const gruposQ   = useQuery(() => getGrupos(), [])
@@ -121,13 +124,13 @@ export default function Pendientes() {
             <p style={{ color: 'var(--text-muted)', textAlign: 'center', marginTop: '3rem' }}>Sin boletos pendientes de pago.</p>
           ) : (
             <div
-              key={rifaId ? 'single' : 'grouped'}
-              style={{ animation: 'pendientes-appear .3s ease both' }}
+              key={`${campanaId}|${rifaId}|${estatus}|${grupoId}`}
+              style={{ animation: 'pendientes-appear .22s ease both' }}
             >
               {rifaId ? (
                 <PendientesList boletos={pendientes} />
               ) : (
-                (agrupados ?? []).map(grupo => <GrupoRifa key={grupo.rifaId} grupo={grupo} />)
+                (agrupados ?? []).map(grupo => <GrupoRifa key={grupo.rifaId} grupo={grupo} open={openMap[grupo.rifaId] ?? false} onToggle={() => toggleGrupo(grupo.rifaId)} />)
               )}
             </div>
           )}
@@ -138,8 +141,7 @@ export default function Pendientes() {
 }
 
 // ── Grupo colapsable por rifa ─────────────────────────────────────────────────
-function GrupoRifa({ grupo }) {
-  const [open, setOpen] = useState(false)  // comprimido por defecto
+function GrupoRifa({ grupo, open, onToggle }) {
   const pctVencido = grupo.boletos.length > 0 ? Math.round(grupo.vencido / grupo.boletos.length * 100) : 0
 
   return (
@@ -147,7 +149,7 @@ function GrupoRifa({ grupo }) {
 
       {/* Cabecera */}
       <button
-        onClick={() => setOpen(o => !o)}
+        onClick={onToggle}
         style={{
           width: '100%', display: 'flex', alignItems: 'flex-start', gap: '.75rem',
           padding: '.85rem 1rem', background: 'var(--bg-muted, var(--card-bg, var(--bg)))',

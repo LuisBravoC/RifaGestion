@@ -299,7 +299,7 @@ export default function BoletoGrid() {
 
         {/* ── Vista cuadrícula o lista ── */}
         <div
-          key={viewMode}
+          key={`${viewMode}|${filterStatus ?? ''}|${filterGrupo}|${searchNum}`}
           style={{ animation: 'boleto-view-in .22s ease both' }}
         >
         {viewMode === 'grid' ? (
