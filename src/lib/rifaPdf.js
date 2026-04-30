@@ -6,11 +6,14 @@ import { fmt, fmtDate } from './formatters.js'
  * @param {Array}  boletos    - Array de boletos con numero_asignado, estatus, nombre_completo
  * @param {object} stats      - { Disponible, Apartado, Liquidado }
  * @param {number} total      - Cantidad total de boletos
+ * @param {object} [opts]     - Opciones: { fechaMode: 'fecha' | 'agotarse' }
  */
-export function generarRifaPDF(rifa, boletos, stats, total) {
+export function generarRifaPDF(rifa, boletos, stats, total, opts = {}) {
   const nombre = rifa.nombre_premio ?? 'Rifa'
   const precio = fmt(rifa.precio_boleto)
-  const fechaS = rifa.fecha_sorteo ? fmtDate(rifa.fecha_sorteo) : 'Por confirmar'
+  const fechaS = opts.fechaMode === 'agotarse'
+    ? 'Hasta agotar boletos'
+    : (rifa.fecha_sorteo ? fmtDate(rifa.fecha_sorteo) : 'Por confirmar')
   const digits = total <= 100 ? 2 : String(total).length
   const pad    = n => String(n).padStart(digits, '0')
 
