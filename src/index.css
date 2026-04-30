@@ -3001,3 +3001,112 @@ details[open].boleto-mini-historial summary::before { transform: rotate(90deg); 
   transition: background .12s;
 }
 .part-list-row:hover { background: var(--bg); }
+
+/* ── Card rediseñado de participante ──────────────────────────────────────── */
+.part-card {
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  border-left: 3px solid var(--part-card-accent, transparent);
+  border-radius: var(--radius);
+  padding: 1rem 1rem .85rem;
+  cursor: pointer;
+  display: flex;
+  flex-direction: column;
+  gap: 0;
+  transition: transform .15s, box-shadow .15s;
+}
+.part-card:hover {
+  border-top-color: var(--accent);
+  border-right-color: var(--accent);
+  border-bottom-color: var(--accent);
+  transform: translateY(-2px);
+  box-shadow: 0 6px 18px rgba(0,0,0,.09);
+}
+.part-card-header {
+  display: flex;
+  align-items: flex-start;
+  gap: .75rem;
+  margin-bottom: .75rem;
+}
+.part-avatar-md {
+  width: 44px;
+  height: 44px;
+  font-size: 1.15rem;
+  flex-shrink: 0;
+}
+.part-card-info {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: .22rem;
+}
+.part-card-nombre {
+  font-weight: 700;
+  font-size: .97rem;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  line-height: 1.2;
+  width: 100%;
+}
+.part-card-contact {
+  display: flex;
+  gap: .55rem;
+  flex-wrap: wrap;
+  font-size: .78rem;
+  color: var(--text-muted);
+  align-items: center;
+}
+.part-card-contact > span {
+  display: flex;
+  align-items: center;
+  gap: .2rem;
+}
+.part-card-divider {
+  height: 1px;
+  background: var(--border);
+  margin: 0 0 .75rem;
+}
+.part-card-stats {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: .4rem;
+  margin-bottom: .75rem;
+}
+.part-card-stat {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: .1rem;
+  padding: .35rem .2rem;
+  border-radius: .4rem;
+  background: var(--bg);
+}
+.part-card-stat-val {
+  font-size: .95rem;
+  font-weight: 800;
+  font-variant-numeric: tabular-nums;
+  line-height: 1.1;
+}
+.part-card-stat-lbl {
+  font-size: .68rem;
+  color: var(--text-muted);
+  text-transform: uppercase;
+  letter-spacing: .04em;
+}
+.part-card-footer {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding-top: .6rem;
+  border-top: 1px solid var(--border);
+}
+.part-card-ver-perfil {
+  font-size: .8rem;
+  color: var(--accent-light);
+  display: flex;
+  align-items: center;
+  gap: .25rem;
+}

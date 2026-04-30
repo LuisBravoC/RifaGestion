@@ -1,6 +1,6 @@
 import { useState, useMemo } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { Users, Phone, Mail, ArrowRight, Pencil, Trash2, Plus, CheckCircle2, Clock, AlertCircle, LayoutGrid, List as ListIcon } from 'lucide-react'
+import { Users, Phone, Mail, ArrowRight, Pencil, Trash2, Plus, LayoutGrid, List as ListIcon } from 'lucide-react'
 import { useQuery } from '../lib/useQuery.js'
 import { useToast } from '../lib/toast.jsx'
 import { fmt } from '../lib/formatters.js'
@@ -299,37 +299,65 @@ function ParticipanteRow({ part, onEdit, onDelete, onClick }) {
 
 function ParticipanteCard({ part, onEdit, onDelete, onClick }) {
   const r = part.resumen ?? { total: 0, liquidados: 0, apartados: 0, pagado: 0, pendiente: 0 }
+  const accentColor = r.pendiente > 0
+    ? 'var(--abonado)'
+    : r.total > 0 && r.pendiente === 0
+      ? 'var(--liquidado)'
+      : 'transparent'
 
   return (
-    <div className="card card-link" onClick={onClick} style={{ cursor: 'pointer' }}>
-      <div className="card-header">
-        <div style={{ flex: 1, minWidth: 0 }}>
-          <div className="card-title" style={{ display: 'flex', alignItems: 'center', gap: '.4rem' }}>
-            <span
-              className="part-avatar"
-              aria-hidden="true"
-            >
-              {part.nombre_completo.charAt(0).toUpperCase()}
-            </span>
-            <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-              {part.nombre_completo}
-            </span>
-          </div>
-          <div style={{ display: 'flex', gap: '.5rem', flexWrap: 'wrap', marginTop: '.3rem', alignItems: 'center' }}>
-            {part.grupo && <GrupoBadge grupo={part.grupo} />}
-            {part.telefono_whatsapp && (
-              <span style={{ fontSize: '.8rem', color: 'var(--text-muted)', display: 'flex', alignItems: 'center', gap: '.2rem' }}>
-                <Phone size={11} /> {part.telefono_whatsapp}
-              </span>
-            )}
-            {part.email && (
-              <span style={{ fontSize: '.8rem', color: 'var(--text-muted)', display: 'flex', alignItems: 'center', gap: '.2rem' }}>
-                <Mail size={11} /> {part.email}
-              </span>
-            )}
-          </div>
+    <div
+      className="part-card"
+      style={{ '--part-card-accent': accentColor }}
+      onClick={onClick}
+    >
+      {/* Cabecera: avatar + nombre + grupo + contacto */}
+      <div className="part-card-header">
+        <span className="part-avatar part-avatar-md" aria-hidden="true">
+          {part.nombre_completo.charAt(0).toUpperCase()}
+        </span>
+        <div className="part-card-info">
+          <div className="part-card-nombre">{part.nombre_completo}</div>
+          {part.grupo && <GrupoBadge grupo={part.grupo} size="sm" />}
+          {(part.telefono_whatsapp || part.email) && (
+            <div className="part-card-contact">
+              {part.telefono_whatsapp && (
+                <span><Phone size={10} /> {part.telefono_whatsapp}</span>
+              )}
+              {part.email && (
+                <span><Mail size={10} /> {part.email}</span>
+              )}
+            </div>
+          )}
         </div>
-        <div style={{ display: 'flex', gap: '.3rem', flexShrink: 0 }}>
+      </div>
+
+      {/* Divisor */}
+      <div className="part-card-divider" />
+
+      {/* Mini-stats */}
+      <div className="part-card-stats">
+        <div className="part-card-stat">
+          <span className="part-card-stat-val">{r.total}</span>
+          <span className="part-card-stat-lbl">{r.total === 1 ? 'boleto' : 'boletos'}</span>
+        </div>
+        <div className="part-card-stat">
+          <span className="part-card-stat-val" style={{ color: r.pagado > 0 ? 'var(--liquidado)' : 'var(--text-muted)' }}>
+            {r.pagado > 0 ? fmt(r.pagado) : '—'}
+          </span>
+          <span className="part-card-stat-lbl">pagado</span>
+        </div>
+        <div className="part-card-stat">
+          <span className="part-card-stat-val" style={{ color: r.pendiente > 0 ? 'var(--abonado)' : 'var(--text-muted)' }}>
+            {r.pendiente > 0 ? fmt(r.pendiente) : '—'}
+          </span>
+          <span className="part-card-stat-lbl">saldo</span>
+        </div>
+      </div>
+
+      {/* Footer: acciones + link */}
+      <div className="part-card-footer">
+        <div style={{ display: 'flex', gap: '.3rem' }}>
           {onEdit && (
             <button className="btn btn-icon" onClick={e => onEdit(part, e)} title="Editar">
               <Pencil size={14} />
@@ -341,44 +369,7 @@ function ParticipanteCard({ part, onEdit, onDelete, onClick }) {
             </button>
           )}
         </div>
-      </div>
-
-      {/* Resumen de boletos */}
-      {r.total > 0 ? (
-        <>
-          <div style={{ display: 'flex', gap: '1rem', fontSize: '.8rem', margin: '.5rem 0 .4rem', flexWrap: 'wrap' }}>
-            <span style={{ color: 'var(--text-muted)' }}>
-              {r.total} {r.total === 1 ? 'boleto' : 'boletos'}
-            </span>
-            {r.liquidados > 0 && (
-              <span style={{ color: 'var(--liquidado)', display: 'flex', alignItems: 'center', gap: '.2rem' }}>
-                <CheckCircle2 size={11} /> {r.liquidados} liquidado{r.liquidados !== 1 ? 's' : ''}
-              </span>
-            )}
-            {r.apartados > 0 && (
-              <span style={{ color: 'var(--abonado)', display: 'flex', alignItems: 'center', gap: '.2rem' }}>
-                <Clock size={11} /> {r.apartados} apartado{r.apartados !== 1 ? 's' : ''}
-              </span>
-            )}
-          </div>
-          <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '.82rem', marginTop: '.2rem' }}>
-            <span>Pagado: <strong style={{ color: 'var(--liquidado)' }}>{fmt(r.pagado)}</strong></span>
-            {r.pendiente > 0 && (
-              <span>
-                <AlertCircle size={11} style={{ marginRight: '.15rem', color: 'var(--abonado)' }} />
-                Debe: <strong style={{ color: 'var(--abonado)' }}>{fmt(r.pendiente)}</strong>
-              </span>
-            )}
-          </div>
-        </>
-      ) : (
-        <p style={{ fontSize: '.8rem', color: 'var(--text-muted)', marginTop: '.4rem' }}>Sin boletos activos</p>
-      )}
-
-      <div style={{ marginTop: '.6rem', display: 'flex', justifyContent: 'flex-end' }}>
-        <span style={{ fontSize: '.8rem', color: 'var(--accent-light)', display: 'flex', alignItems: 'center', gap: '.2rem' }}>
-          Ver perfil <ArrowRight size={13} />
-        </span>
+        <span className="part-card-ver-perfil">Ver perfil <ArrowRight size={12} /></span>
       </div>
     </div>
   )
