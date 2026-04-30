@@ -75,7 +75,11 @@ export default function SorteosList() {
       } else {
         // Al editar NO se regeneran los boletos para no perder asignaciones
         const { nombre_premio, descripcion, precio_boleto, fecha_sorteo, horas_expiracion, estatus } = form
+        const precioAnterior = drawer.record.precio_boleto
         await q.updateRifa(drawer.record.id, { nombre_premio, descripcion, precio_boleto: Number(precio_boleto), fecha_sorteo: fecha_sorteo || null, horas_expiracion: Number(horas_expiracion), estatus })
+        if (Number(precio_boleto) !== Number(precioAnterior)) {
+          await q.recalcularEstatusPorPrecio(drawer.record.id, Number(precio_boleto))
+        }
         done('Rifa actualizada')
       }
     } catch (e) { showErr(e) }

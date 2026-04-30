@@ -216,6 +216,41 @@ export async function deleteRifa(id) {
   )
 }
 
+/**
+ * Recalcula el estatus de los boletos asignados tras un cambio de precio.
+ * - Apartado/Vencido cuyo total_pagado >= nuevoPrecio  → Liquidado
+ * - Liquidado cuyo total_pagado < nuevoPrecio           → Apartado
+ */
+export async function recalcularEstatusPorPrecio(rifaId, nuevoPrecio) {
+  if (!rifaId || !nuevoPrecio) return
+  const precio = Number(nuevoPrecio)
+
+  // Obtener todos los boletos asignados de la rifa con su total_pagado
+  const { data: boletos, error } = await supabase
+    .from('vista_saldo_boletos')
+    .select('id, estatus, total_pagado')
+    .eq('rifa_id', rifaId)
+    .not('participante_id', 'is', null)
+  if (error) throw error
+
+  const aLiquidar = boletos.filter(b =>
+    (b.estatus === 'Apartado' || b.estatus === 'Vencido') && Number(b.total_pagado) >= precio
+  ).map(b => b.id)
+
+  const aApartar = boletos.filter(b =>
+    b.estatus === 'Liquidado' && Number(b.total_pagado) < precio
+  ).map(b => b.id)
+
+  await Promise.all([
+    aLiquidar.length
+      ? supabase.from('boletos').update({ estatus: 'Liquidado' }).in('id', aLiquidar)
+      : Promise.resolve(),
+    aApartar.length
+      ? supabase.from('boletos').update({ estatus: 'Apartado' }).in('id', aApartar)
+      : Promise.resolve(),
+  ])
+}
+
 // =============================================================================
 // BOLETOS
 // =============================================================================
