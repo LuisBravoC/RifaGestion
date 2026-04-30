@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react'
 import { Link, useSearchParams } from 'react-router-dom'
-import { Ticket, Search, Phone, CheckCircle2, Clock, AlertCircle, Share2, Copy } from 'lucide-react'
+import { Ticket, Search, Phone, CheckCircle2, Clock, AlertCircle, Share2, Copy, Trophy } from 'lucide-react'
 import { fmt, fmtNum, fmtDate, normalizePhone } from '../lib/formatters.js'
 import { getMisBoletos } from '../lib/rifas-queries.js'
 import ProgressBar from '../components/ProgressBar.jsx'
@@ -199,11 +199,23 @@ function RifaGroup({ rifa, boletos }) {
 }
 
 function BoletoMini({ boleto, total }) {
-  const saldo = Number(boleto.saldo_pendiente)
+  const saldo     = Number(boleto.saldo_pendiente)
+  const ganador   = boleto.es_ganador
+  const posicion  = boleto.posicion_ganador
+  const medalles  = ['🥇', '🥈', '🥉']
+  const medalla   = posicion && posicion <= 3 ? medalles[posicion - 1] : `#${posicion}`
 
   return (
-    <div className={`boleto-mini boleto-mini-${boleto.estatus.toLowerCase()}`}>
-      <div className="boleto-mini-num">#{fmtNum(boleto.numero_asignado, total)}</div>
+    <div className={`boleto-mini boleto-mini-${boleto.estatus.toLowerCase()}${ganador ? ' boleto-mini-ganador' : ''}`}>
+      {ganador && (
+        <div className="boleto-mini-ganador-banner">
+          <Trophy size={12} /> ¡GANADOR!
+        </div>
+      )}
+      <div className="boleto-mini-num">
+        {ganador && <span className="boleto-mini-medalla">{medalla}</span>}
+        #{fmtNum(boleto.numero_asignado, total)}
+      </div>
       <StatusBadge status={boleto.estatus} style={{ fontSize: '.68rem' }} />
       <div className="boleto-mini-pagos">
         <span>Pagado: <strong>{fmt(boleto.total_pagado)}</strong></span>

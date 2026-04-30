@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useState, useMemo } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { Users, Phone, Mail, ArrowRight, Pencil, Trash2, Plus, CheckCircle2, Clock, AlertCircle, LayoutGrid, List as ListIcon } from 'lucide-react'
 import { useQuery } from '../lib/useQuery.js'
@@ -13,17 +13,20 @@ import Drawer from '../components/Drawer.jsx'
 import ConfirmModal from '../components/ConfirmModal.jsx'
 import ErrorModal from '../components/ErrorModal.jsx'
 import { parseError } from '../lib/parseError.js'
+import GrupoBadge from '../components/GrupoBadge.jsx'
 
-const EMPTY = { nombre_completo: '', telefono_whatsapp: '', email: '' }
+const EMPTY = { nombre_completo: '', telefono_whatsapp: '', email: '', grupo_id: '' }
 
 export default function ParticipantesList() {
   const navigate = useNavigate()
   const crumbs = useBreadcrumbs()
   const { isAdmin } = useAuth()
   const { data, loading, error, refetch } = useQuery(() => q.getParticipantes(), [])
+  const { data: grupos } = useQuery(() => q.getGrupos(), [])
 
-  const [search,   setSearch]   = useState('')
-  const [viewMode, setViewMode] = useState('cards')  // 'cards' | 'list'
+  const [search,     setSearch]     = useState('')
+  const [grupoFiltro, setGrupoFiltro] = useState('')  // '' = todos
+  const [viewMode,   setViewMode]   = useState('cards')  // 'cards' | 'list'
   const [drawer,   setDrawer]   = useState(null)
   const [form,     setForm]     = useState(EMPTY)
   const [saving,   setSaving]   = useState(false)
@@ -38,7 +41,7 @@ export default function ParticipantesList() {
   function openCreate() { setForm(EMPTY); setDrawer({ mode: 'create' }) }
   function openEdit(p, e) {
     e.stopPropagation()
-    setForm({ nombre_completo: p.nombre_completo, telefono_whatsapp: p.telefono_whatsapp ?? '', email: p.email ?? '' })
+    setForm({ nombre_completo: p.nombre_completo, telefono_whatsapp: p.telefono_whatsapp ?? '', email: p.email ?? '', grupo_id: p.grupo_id ?? '' })
     setDrawer({ mode: 'edit', record: p })
   }
 
@@ -65,15 +68,18 @@ export default function ParticipantesList() {
   }
 
   // Filtered list
-  const list = (data ?? []).filter(p => {
-    if (!search.trim()) return true
-    const q = search.toLowerCase()
-    return (
-      p.nombre_completo.toLowerCase().includes(q) ||
-      (p.telefono_whatsapp ?? '').includes(q) ||
-      (p.email ?? '').toLowerCase().includes(q)
-    )
-  })
+  const list = useMemo(() => {
+    return (data ?? []).filter(p => {
+      if (grupoFiltro && p.grupo_id !== grupoFiltro) return false
+      if (!search.trim()) return true
+      const s = search.toLowerCase()
+      return (
+        p.nombre_completo.toLowerCase().includes(s) ||
+        (p.telefono_whatsapp ?? '').includes(s) ||
+        (p.email ?? '').toLowerCase().includes(s)
+      )
+    })
+  }, [data, search, grupoFiltro])
 
   if (loading) return <><Breadcrumbs crumbs={crumbs} /><LoadingSpinner text="Cargando participantes…" /></>
   if (error)   return <ErrorMsg message={error} />
@@ -107,15 +113,25 @@ export default function ParticipantesList() {
           </div>
         </div>
 
-        {/* Barra de búsqueda */}
-        <div style={{ marginBottom: '1rem' }}>
+        {/* Barra de búsqueda + filtro grupo */}
+        <div style={{ marginBottom: '1rem', display: 'flex', gap: '.6rem', flexWrap: 'wrap', alignItems: 'center' }}>
           <input
             className="deuda-search"
-            style={{ width: '100%', maxWidth: '400px' }}
+            style={{ flex: '1 1 220px', minWidth: 0 }}
             placeholder="Buscar por nombre, teléfono o email…"
             value={search}
             onChange={e => setSearch(e.target.value)}
           />
+          {(grupos ?? []).length > 0 && (
+            <select
+              value={grupoFiltro}
+              onChange={e => setGrupoFiltro(e.target.value)}
+              style={{ height: '2.2rem', borderRadius: 'var(--radius)', border: '1px solid var(--border)', background: 'var(--bg)', color: 'var(--text)', padding: '0 .75rem', fontSize: '.875rem', flexShrink: 0 }}
+            >
+              <option value="">Todos los grupos</option>
+              {(grupos ?? []).map(g => <option key={g.id} value={g.id}>{g.nombre}</option>)}
+            </select>
+          )}
         </div>
 
         {/* Contador */}
@@ -197,6 +213,14 @@ export default function ParticipantesList() {
               placeholder="correo@ejemplo.com"
             />
           </div>
+          <div className="field">
+            <label>Grupo social</label>
+            <select value={form.grupo_id} onChange={e => set('grupo_id', e.target.value || null)}
+              style={{ background: 'var(--bg)', border: '1px solid var(--border)', borderRadius: 'var(--radius)', padding: '.45rem .75rem', color: 'var(--text)', fontSize: '.875rem', width: '100%' }}>
+              <option value="">Sin grupo</option>
+              {(grupos ?? []).map(g => <option key={g.id} value={g.id}>{g.nombre}</option>)}
+            </select>
+          </div>
         </Drawer>
       )}
 
@@ -234,7 +258,8 @@ function ParticipanteRow({ part, onEdit, onDelete, onClick }) {
         <div style={{ fontWeight: 600, fontSize: '.92rem', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
           {part.nombre_completo}
         </div>
-        <div style={{ fontSize: '.78rem', color: 'var(--text-muted)', display: 'flex', gap: '.6rem', flexWrap: 'wrap', marginTop: '.1rem' }}>
+        <div style={{ fontSize: '.78rem', color: 'var(--text-muted)', display: 'flex', gap: '.6rem', flexWrap: 'wrap', marginTop: '.1rem', alignItems: 'center' }}>
+          {part.grupo && <GrupoBadge grupo={part.grupo} />}
           {part.telefono_whatsapp && <span><Phone size={10} /> {part.telefono_whatsapp}</span>}
           {part.email && <span><Mail size={10} /> {part.email}</span>}
         </div>
@@ -283,7 +308,8 @@ function ParticipanteCard({ part, onEdit, onDelete, onClick }) {
               {part.nombre_completo}
             </span>
           </div>
-          <div style={{ display: 'flex', gap: '.75rem', flexWrap: 'wrap', marginTop: '.3rem' }}>
+          <div style={{ display: 'flex', gap: '.5rem', flexWrap: 'wrap', marginTop: '.3rem', alignItems: 'center' }}>
+            {part.grupo && <GrupoBadge grupo={part.grupo} />}
             {part.telefono_whatsapp && (
               <span style={{ fontSize: '.8rem', color: 'var(--text-muted)', display: 'flex', alignItems: 'center', gap: '.2rem' }}>
                 <Phone size={11} /> {part.telefono_whatsapp}

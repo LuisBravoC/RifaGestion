@@ -19,6 +19,7 @@ import ConfirmModal from '../components/ConfirmModal.jsx'
 import ErrorModal from '../components/ErrorModal.jsx'
 import { parseError } from '../lib/parseError.js'
 import StatusBadge from '../components/StatusBadge.jsx'
+import GrupoBadge from '../components/GrupoBadge.jsx'
 
 // ── Componente principal ──────────────────────────────────────────────────────
 
@@ -33,11 +34,13 @@ export default function ParticipanteDetail() {
     [partId]
   )
 
+  const { data: grupos } = useQuery(() => q.getGrupos(), [])
   const [drawerEdit, setDrawerEdit] = useState(false)
   const [form,       setForm]       = useState({})
   const [saving,     setSaving]     = useState(false)
   const [confirmDel, setConfirmDel] = useState(false)
   const [errModal,   setErrModal]   = useState(null)
+
   const showErr = e => setErrModal(typeof e === 'string' ? { title: 'Aviso', body: e } : (e?.title ? e : parseError(e)))
 
   const set = (k, v) => setForm(f => ({ ...f, [k]: v }))
@@ -49,7 +52,7 @@ export default function ParticipanteDetail() {
 
   function openEdit() {
     const p = data.participante
-    setForm({ nombre_completo: p.nombre_completo, telefono_whatsapp: p.telefono_whatsapp ?? '', email: p.email ?? '' })
+    setForm({ nombre_completo: p.nombre_completo, telefono_whatsapp: p.telefono_whatsapp ?? '', email: p.email ?? '', grupo_id: p.grupo_id ?? '' })
     setDrawerEdit(true)
   }
 
@@ -161,7 +164,8 @@ export default function ParticipanteDetail() {
             </div>
             <div style={{ flex: 1, minWidth: 0 }}>
               <h2 style={{ fontSize: '1.3rem', fontWeight: 800, marginBottom: '.25rem' }}>{p.nombre_completo}</h2>
-              <div style={{ display: 'flex', gap: '1rem', flexWrap: 'wrap', fontSize: '.88rem', color: 'var(--text-muted)' }}>
+              <div style={{ display: 'flex', gap: '.75rem', flexWrap: 'wrap', fontSize: '.88rem', color: 'var(--text-muted)', alignItems: 'center' }}>
+                {p.grupo && <GrupoBadge grupo={p.grupo} size="md" />}
                 {p.telefono_whatsapp && (
                   <span style={{ display: 'flex', alignItems: 'center', gap: '.3rem' }}>
                     <Phone size={13} /> {p.telefono_whatsapp}
@@ -261,6 +265,14 @@ export default function ParticipanteDetail() {
           <div className="field">
             <label>Email</label>
             <input type="email" value={form.email} onChange={e => set('email', e.target.value)} />
+          </div>
+          <div className="field">
+            <label>Grupo social</label>
+            <select value={form.grupo_id ?? ''} onChange={e => set('grupo_id', e.target.value || null)}
+              style={{ background: 'var(--bg)', border: '1px solid var(--border)', borderRadius: 'var(--radius)', padding: '.45rem .75rem', color: 'var(--text)', fontSize: '.875rem', width: '100%' }}>
+              <option value="">Sin grupo</option>
+              {(grupos ?? []).map(g => <option key={g.id} value={g.id}>{g.nombre}</option>)}
+            </select>
           </div>
         </Drawer>
       )}

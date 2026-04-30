@@ -73,6 +73,7 @@ export function previewToFilas(preview) {
     .map(r => ({
       numero:   r._num,
       nombre:   (r['nombre'] ?? '').trim(),
+      grupo:    (r['grupo'] ?? '').trim(),
       contacto: (r['contacto'] ?? '').trim(),
       pagado:   (r['pagado'] ?? '').toUpperCase() === 'TRUE',
       fecha:    parseFechaCSV(r['fecha'] ?? ''),
@@ -89,7 +90,7 @@ export function exportarBoletos(boletos, rifa) {
   const rows = boletos.map(b => [
     b.numero_asignado,
     b.nombre_completo ?? '',
-    '',
+    b.grupo_nombre ?? '',
     b.estatus === 'Liquidado' ? 'TRUE' : 'FALSE',
     b.telefono_whatsapp ?? '',
     b.fecha_apartado ? b.fecha_apartado.slice(0, 10) : '',

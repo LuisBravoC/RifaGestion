@@ -16,6 +16,38 @@ function check({ data, error }, label) {
 }
 
 // =============================================================================
+// GRUPOS SOCIALES
+// =============================================================================
+
+export async function getGrupos() {
+  return check(
+    await supabase.from('grupos').select('*').order('nombre'),
+    'getGrupos'
+  )
+}
+
+export async function insertGrupo(data) {
+  return check(
+    await supabase.from('grupos').insert(data).select().single(),
+    'insertGrupo'
+  )
+}
+
+export async function updateGrupo(id, data) {
+  return check(
+    await supabase.from('grupos').update(data).eq('id', id).select().single(),
+    'updateGrupo'
+  )
+}
+
+export async function deleteGrupo(id) {
+  return check(
+    await supabase.from('grupos').delete().eq('id', id),
+    'deleteGrupo'
+  )
+}
+
+// =============================================================================
 // CAMPAÑAS
 // =============================================================================
 
@@ -322,7 +354,7 @@ export async function vencerBoletosExpirados(rifaId, horasExpiracion) {
  */
 export async function getParticipantes() {
   const [partsRes, bolRes] = await Promise.all([
-    supabase.from('participantes').select('*').order('nombre_completo'),
+    supabase.from('participantes').select('*, grupo:grupos(id, nombre, color)').order('nombre_completo'),
     supabase
       .from('vista_saldo_boletos')
       .select('participante_id, estatus, total_pagado, saldo_pendiente')
@@ -349,7 +381,7 @@ export async function getParticipantes() {
 
 export async function getParticipante(id) {
   return check(
-    await supabase.from('participantes').select('*').eq('id', id).single(),
+    await supabase.from('participantes').select('*, grupo:grupos(id, nombre, color)').eq('id', id).single(),
     'getParticipante'
   )
 }
@@ -360,7 +392,7 @@ export async function getParticipante(id) {
  */
 export async function getParticipanteConBoletos(id) {
   const [partRes, bolRes] = await Promise.all([
-    supabase.from('participantes').select('*').eq('id', id).maybeSingle(),
+    supabase.from('participantes').select('*, grupo:grupos(id, nombre, color)').eq('id', id).maybeSingle(),
     supabase
       .from('vista_saldo_boletos')
       .select('*')
@@ -584,7 +616,7 @@ export async function getMisBoletos(telefono) {
     .from('boletos')
     .select(`
       id, numero_asignado, estatus, fecha_apartado,
-      rifa:rifas(id, nombre_premio, fecha_sorteo, precio_boleto, cantidad_boletos),
+      rifa:rifas(id, nombre_premio, fecha_sorteo, precio_boleto, cantidad_boletos, ganadores),
       pagos:historial_pagos_rifa(monto, fecha, metodo_pago)
     `)
     .eq('participante_id', participante.id)
@@ -593,6 +625,8 @@ export async function getMisBoletos(telefono) {
 
   const enriched = (boletos ?? []).map(b => {
     const totalPagado = (b.pagos ?? []).reduce((s, p) => s + Number(p.monto), 0)
+    const ganadoresRifa = b.rifa?.ganadores ?? []
+    const posicionGanador = ganadoresRifa.findIndex(g => g.id === b.id)
     return {
       id:              b.id,
       numero_asignado: b.numero_asignado,
@@ -602,6 +636,8 @@ export async function getMisBoletos(telefono) {
       pagos:           b.pagos ?? [],
       total_pagado:    totalPagado,
       saldo_pendiente: Number(b.rifa?.precio_boleto ?? 0) - totalPagado,
+      es_ganador:      posicionGanador >= 0,
+      posicion_ganador: posicionGanador >= 0 ? posicionGanador + 1 : null,
     }
   })
 
@@ -622,11 +658,10 @@ export async function importarBoletos(rifaId, filas, precioBoleto) {
   const conNombre = filas.filter(f => f.nombre?.trim())
   if (conNombre.length === 0) return { importados: 0, saltados: 0 }
 
-  // Normaliza un nombre para comparación: minúsculas + sin acentos
   const normalize = s => s.trim().toLowerCase()
     .normalize('NFD').replace(/[\u0300-\u036f]/g, '')
 
-  // 1. Obtener todos los boletos de la rifa (para mapear numero → id/estatus)
+  // 1. Obtener todos los boletos de la rifa
   const { data: boletosList } = await supabase
     .from('boletos')
     .select('id, numero_asignado, estatus')
@@ -635,26 +670,43 @@ export async function importarBoletos(rifaId, filas, precioBoleto) {
     (boletosList ?? []).map(b => [b.numero_asignado, b])
   )
 
-  // 2. Nombres únicos normalizados
+  // 2. Resolver grupos del CSV → crear los que no existan y construir mapa nombre→id
+  const grupoNames = [...new Set(conNombre.map(f => f.grupo?.trim()).filter(Boolean))]
+  const grupoMap = {}   // nombre_normalizado → grupo_id
+  if (grupoNames.length > 0) {
+    const { data: existingGrupos } = await supabase
+      .from('grupos').select('id, nombre').in('nombre', grupoNames)
+    for (const g of existingGrupos ?? []) grupoMap[normalize(g.nombre)] = g.id
+
+    const missingGrupos = grupoNames.filter(n => !grupoMap[normalize(n)])
+    if (missingGrupos.length > 0) {
+      const { data: createdGrupos } = await supabase
+        .from('grupos').insert(missingGrupos.map(nombre => ({ nombre }))).select('id, nombre')
+      for (const g of createdGrupos ?? []) grupoMap[normalize(g.nombre)] = g.id
+    }
+  }
+
+  // 3. Nombres únicos de participantes
   const uniqueNames = [...new Set(conNombre.map(f => f.nombre.trim()))]
 
-  // 3. Buscar participantes existentes (case-insensitive mediante ilike por nombre normalizado)
+  // 4. Buscar participantes existentes
   const { data: existing } = await supabase
     .from('participantes')
     .select('id, nombre_completo')
     .in('nombre_completo', uniqueNames)
-  // Mapa normalizado → id (evita duplicados por mayúsculas o acentos)
   const partMap = {}
   for (const p of existing ?? []) partMap[normalize(p.nombre_completo)] = p.id
 
-  // 4. Crear participantes faltantes (solo los que no existen ni normalizado)
+  // 5. Crear participantes faltantes (con grupo si viene en el CSV)
   const missing = uniqueNames.filter(n => !partMap[normalize(n)])
   if (missing.length > 0) {
     const toInsert = missing.map(nombre => {
       const fila = conNombre.find(f => f.nombre.trim() === nombre)
+      const grupoNorm = normalize(fila?.grupo ?? '')
       return {
-        nombre_completo:    nombre,
-        telefono_whatsapp:  fila?.contacto?.trim() || null,
+        nombre_completo:   nombre,
+        telefono_whatsapp: fila?.contacto?.trim() || null,
+        grupo_id:          grupoMap[grupoNorm] ?? null,
       }
     })
     const { data: created } = await supabase
@@ -662,7 +714,20 @@ export async function importarBoletos(rifaId, filas, precioBoleto) {
     for (const p of created ?? []) partMap[normalize(p.nombre_completo)] = p.id
   }
 
-  // 5. Actualizar boletos y recopilar pagos a insertar
+  // 6. Para participantes YA existentes, actualizar grupo si viene en el CSV y aún no tienen
+  for (const nombre of uniqueNames.filter(n => partMap[normalize(n)])) {
+    const fila = conNombre.find(f => f.nombre.trim() === nombre)
+    if (!fila?.grupo?.trim()) continue
+    const grupoId = grupoMap[normalize(fila.grupo.trim())]
+    if (grupoId) {
+      await supabase.from('participantes')
+        .update({ grupo_id: grupoId })
+        .eq('id', partMap[normalize(nombre)])
+        .is('grupo_id', null)   // solo si aún no tiene grupo asignado
+    }
+  }
+
+  // 7. Actualizar boletos y recopilar pagos a insertar
   let importados = 0, saltados = 0
   const pagosInsert = []
 

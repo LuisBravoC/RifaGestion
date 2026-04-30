@@ -278,7 +278,7 @@ export default function BoletoPanel({ boleto: boletoInicial, rifa, total, isAdmi
                     />
                   </div>
                   <div className="field">
-                    <label>Tel\u00e9fono WhatsApp</label>
+                    <label>Teléfono WhatsApp</label>
                     <input
                       value={nuevoPart.telefono_whatsapp}
                       onChange={e => setNuevoPart(f => ({ ...f, telefono_whatsapp: e.target.value }))}
@@ -331,7 +331,7 @@ export default function BoletoPanel({ boleto: boletoInicial, rifa, total, isAdmi
               >
                 <div style={{ flex: 1 }}>
                   <div style={{ fontWeight: 600, marginBottom: '.15rem' }}>{boleto.nombre_completo ?? '—'}</div>
-                  <div style={{ fontSize: '.82rem', color: 'var(--text-muted)' }}>{boleto.telefono_whatsapp ?? 'Sin tel\u00e9fono'}</div>
+                  <div style={{ fontSize: '.82rem', color: 'var(--text-muted)' }}>{boleto.telefono_whatsapp ?? 'Sin teléfono'}</div>
                   {boleto.fecha_apartado && (
                     <div style={{ fontSize: '.78rem', color: 'var(--text-muted)', marginTop: '.15rem' }}>
                       <Clock size={11} /> Apartado: {fmtDate(boleto.fecha_apartado)}

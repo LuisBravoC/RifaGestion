@@ -25,6 +25,7 @@ import ImportModal from '../components/ImportModal.jsx'
 import { parseCSV, parseFechaCSV, csvEsc, exportarBoletos, buildImportPreview, previewToFilas } from '../lib/csv-utils.js'
 import { generarRifaPDF } from '../lib/rifaPdf.js'
 import StatusBadge from '../components/StatusBadge.jsx'
+import GrupoBadge from '../components/GrupoBadge.jsx'
 
 // ── Componente principal ─────────────────────────────────────────────────────
 
@@ -49,6 +50,7 @@ export default function BoletoGrid() {
   const { ganadores, tombola, handleTombolaClose, ultimoGanador, handleElegirGanador, handleRemoveGanador, handleResetSorteo } = useGanadores(rifaId, rifaQ.data, showErr)
   const [viewMode,     setViewMode]     = useState('grid')  // 'grid' | 'list'
   const [filterStatus, setFilterStatus] = useState(null)    // null = Todos
+  const [filterGrupo,  setFilterGrupo]  = useState('')      // '' = Todos
   const [searchNum,    setSearchNum]    = useState('')
   const fileInputRef    = useRef(null)
   const [importModal,   setImportModal]   = useState(null) // {preview, importing}
@@ -125,14 +127,17 @@ export default function BoletoGrid() {
     [boletos]
   )
 
+  const { data: grupos } = useQuery(() => q.getGrupos(), [])
+
   // Boletos filtrados por estatus y búsqueda de número
   const boletosVisible = useMemo(() => {
     let list = boletos
-    if (filterStatus) list = list.filter(b => b.estatus === filterStatus)
-    const q = searchNum.trim()
-    if (q)            list = list.filter(b => String(b.numero_asignado).includes(q))
+    if (filterStatus)  list = list.filter(b => b.estatus === filterStatus)
+    if (filterGrupo)   list = list.filter(b => b.grupo_id === filterGrupo)
+    const qs = searchNum.trim()
+    if (qs)            list = list.filter(b => String(b.numero_asignado).includes(qs))
     return list
-  }, [boletos, filterStatus, searchNum])
+  }, [boletos, filterStatus, filterGrupo, searchNum])
 
   if (campanaQ.loading || rifaQ.loading || boletosQ.loading)
     return <><Breadcrumbs crumbs={crumbs} /><LoadingSpinner text="Cargando cuadrícula…" /></>
@@ -236,6 +241,14 @@ export default function BoletoGrid() {
                 </button>
               )
             })}
+            {/* Filtro grupo */}
+            {(grupos ?? []).length > 0 && (
+              <select value={filterGrupo} onChange={e => setFilterGrupo(e.target.value)}
+                style={{ height: '2.1rem', borderRadius: 'var(--radius)', border: '1px solid var(--border)', background: 'var(--bg)', color: 'var(--text)', padding: '0 .65rem', fontSize: '.82rem', flexShrink: 0 }}>
+                <option value="">Todos los grupos</option>
+                {(grupos ?? []).map(g => <option key={g.id} value={g.id}>{g.nombre}</option>)}
+              </select>
+            )}
             {/* Búsqueda por número */}
             <div style={{ position: 'relative', display: 'flex', alignItems: 'center' }}>
               <Search size={14} style={{ position: 'absolute', left: '.6rem', color: 'var(--text-muted)', pointerEvents: 'none' }} />

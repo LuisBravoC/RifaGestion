@@ -2653,6 +2653,30 @@ html.google .stat-label {
 .boleto-mini-apartado  { border-color: var(--abonado);  background: var(--abonado-bg); }
 .boleto-mini-liquidado { border-color: var(--liquidado); background: var(--liquidado-bg); }
 .boleto-mini-vencido   { border-color: var(--deuda);    background: var(--deuda-bg); opacity: .8; }
+.boleto-mini-ganador   {
+  border-color: #f59e0b !important;
+  background: linear-gradient(135deg, #fef3c7 0%, #fffbeb 60%) !important;
+  box-shadow: 0 0 0 2px rgba(245,158,11,.25);
+}
+.boleto-mini-ganador .boleto-mini-num           { color: #78350f; }
+.boleto-mini-ganador .boleto-mini-pagos         { color: #92400e; }
+.boleto-mini-ganador .boleto-mini-historial summary { color: #92400e; }
+.boleto-mini-ganador .boleto-mini-pago-meta     { color: #a16207; }
+.boleto-mini-ganador .boleto-mini-pago-monto    { color: #78350f; }
+.boleto-mini-ganador-banner {
+  display: flex;
+  align-items: center;
+  gap: .3rem;
+  font-size: .72rem;
+  font-weight: 800;
+  letter-spacing: .05em;
+  color: #431407;
+  background: linear-gradient(90deg, #f59e0b, #d97706);
+  border-radius: .35rem .35rem 0 0;
+  padding: .28rem .65rem;
+  margin: -.75rem -.85rem .5rem;
+  text-shadow: 0 1px 0 rgba(255,255,255,.15);
+}
 
 .boleto-mini-num {
   font-size: 1.5rem;
@@ -2667,6 +2691,12 @@ html.google .stat-label {
   font-size: .78rem;
   margin-top: .35rem;
   color: var(--text-muted);
+}
+.boleto-mini-medalla {
+  font-size: 1.2rem;
+  line-height: 1;
+  margin-right: .2rem;
+  vertical-align: middle;
 }
 .boleto-mini-historial {
   margin-top: .6rem;

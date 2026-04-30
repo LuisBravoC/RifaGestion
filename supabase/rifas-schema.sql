@@ -30,13 +30,23 @@ CREATE TABLE IF NOT EXISTS rifas (
   created_at       timestamptz   NOT NULL DEFAULT now()
 );
 
--- 3. PARTICIPANTES — perfil del comprador (uno por número de teléfono)
+-- 3. GRUPOS SOCIALES — categorías libres para clasificar participantes
+-- ─────────────────────────────────────────────────────────────────────
+CREATE TABLE IF NOT EXISTS grupos (
+  id         uuid        PRIMARY KEY DEFAULT gen_random_uuid(),
+  nombre     text        NOT NULL UNIQUE,
+  color      text        NOT NULL DEFAULT '#6366f1',
+  created_at timestamptz NOT NULL DEFAULT now()
+);
+
+-- 4. PARTICIPANTES — perfil del comprador (uno por número de teléfono)
 -- ─────────────────────────────────────────────────────────────────────
 CREATE TABLE IF NOT EXISTS participantes (
   id                uuid        PRIMARY KEY DEFAULT gen_random_uuid(),
   nombre_completo   text        NOT NULL,
   telefono_whatsapp text,
   email             text,
+  grupo_id          uuid        REFERENCES grupos(id) ON DELETE SET NULL,
   created_at        timestamptz NOT NULL DEFAULT now()
 );
 
@@ -73,6 +83,7 @@ CREATE INDEX IF NOT EXISTS idx_boletos_part     ON boletos(participante_id);
 CREATE INDEX IF NOT EXISTS idx_boletos_estatus  ON boletos(estatus);
 CREATE INDEX IF NOT EXISTS idx_rifas_campana    ON rifas(campana_id);
 CREATE INDEX IF NOT EXISTS idx_pagos_boleto     ON historial_pagos_rifa(boleto_id);
+CREATE INDEX IF NOT EXISTS idx_participantes_grupo ON participantes(grupo_id);
 
 -- ── VISTA: saldo calculado por boleto ───────────────────────────────────────
 CREATE OR REPLACE VIEW vista_saldo_boletos AS
@@ -83,10 +94,12 @@ SELECT
   b.numero_asignado,
   b.estatus,
   b.fecha_apartado,
-  -- Preferir el nombre guardado en el boleto; si aún existe el participante usar el suyo
   COALESCE(b.nombre_participante, p.nombre_completo) AS nombre_completo,
   p.telefono_whatsapp,
   p.email,
+  p.grupo_id,
+  g.nombre  AS grupo_nombre,
+  g.color   AS grupo_color,
   r.precio_boleto,
   r.nombre_premio,
   r.campana_id,
@@ -97,16 +110,19 @@ SELECT
 FROM      boletos               b
 JOIN      rifas                 r  ON r.id  = b.rifa_id
 LEFT JOIN participantes         p  ON p.id  = b.participante_id
+LEFT JOIN grupos                g  ON g.id  = p.grupo_id
 LEFT JOIN historial_pagos_rifa  hp ON hp.boleto_id = b.id
 GROUP BY
   b.id, b.rifa_id, b.participante_id, b.numero_asignado,
   b.estatus, b.fecha_apartado, b.nombre_participante,
-  p.nombre_completo, p.telefono_whatsapp, p.email,
+  p.nombre_completo, p.telefono_whatsapp, p.email, p.grupo_id,
+  g.nombre, g.color,
   r.precio_boleto, r.nombre_premio, r.campana_id, r.fecha_sorteo, r.cantidad_boletos;
 
 -- ── RLS ─────────────────────────────────────────────────────────────────────
 ALTER TABLE campanas             ENABLE ROW LEVEL SECURITY;
 ALTER TABLE rifas                ENABLE ROW LEVEL SECURITY;
+ALTER TABLE grupos               ENABLE ROW LEVEL SECURITY;
 ALTER TABLE participantes        ENABLE ROW LEVEL SECURITY;
 ALTER TABLE boletos              ENABLE ROW LEVEL SECURITY;
 ALTER TABLE historial_pagos_rifa ENABLE ROW LEVEL SECURITY;
@@ -114,11 +130,13 @@ ALTER TABLE historial_pagos_rifa ENABLE ROW LEVEL SECURITY;
 -- Usuarios autenticados: acceso total
 CREATE POLICY "rifas_auth_all" ON campanas             FOR ALL TO authenticated USING (true) WITH CHECK (true);
 CREATE POLICY "rifas_auth_all" ON rifas                FOR ALL TO authenticated USING (true) WITH CHECK (true);
+CREATE POLICY "rifas_auth_all" ON grupos               FOR ALL TO authenticated USING (true) WITH CHECK (true);
 CREATE POLICY "rifas_auth_all" ON participantes        FOR ALL TO authenticated USING (true) WITH CHECK (true);
 CREATE POLICY "rifas_auth_all" ON boletos              FOR ALL TO authenticated USING (true) WITH CHECK (true);
 CREATE POLICY "rifas_auth_all" ON historial_pagos_rifa FOR ALL TO authenticated USING (true) WITH CHECK (true);
 
 -- Usuarios anónimos: solo lectura (para la página pública /mis-boletos)
+CREATE POLICY "rifas_anon_read" ON grupos               FOR SELECT TO anon USING (true);
 CREATE POLICY "rifas_anon_read" ON participantes        FOR SELECT TO anon USING (true);
 CREATE POLICY "rifas_anon_read" ON boletos              FOR SELECT TO anon USING (true);
 CREATE POLICY "rifas_anon_read" ON rifas                FOR SELECT TO anon USING (true);
