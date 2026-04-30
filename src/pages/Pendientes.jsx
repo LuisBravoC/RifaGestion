@@ -229,7 +229,7 @@ function PendientesList({ boletos }) {
       <table className="pendientes-table">
         <thead>
           <tr>
-            {['Boleto','Participante','Estatus','Apartado','Abonado','Saldo',''].map(h => (
+            {['Boleto','Participante','Grupo','Estatus','Apartado','Abonado','Saldo',''].map(h => (
               <th key={h}>{h}</th>
             ))}
           </tr>
@@ -243,16 +243,14 @@ function PendientesList({ boletos }) {
                 </Link>
               </td>
               <td>
-                <div style={{ display:'flex', flexDirection:'column', gap:'.2rem' }}>
-                  {b.grupo_nombre && (
-                    <GrupoBadge grupo={{ nombre: b.grupo_nombre, color: b.grupo_color }} />
-                  )}
-                  {b.participante_id ? (
-                    <Link to={`/participantes/${b.participante_id}`} style={{ color:'inherit', display:'inline-flex', alignItems:'center', gap:'.2rem', textDecoration:'none' }}>
-                      {b.nombre_completo ?? '—'} <ArrowRight size={11} />
-                    </Link>
-                  ) : (b.nombre_completo ?? '—')}
-                </div>
+                {b.participante_id ? (
+                  <Link to={`/participantes/${b.participante_id}`} style={{ color:'inherit', display:'inline-flex', alignItems:'center', gap:'.2rem', textDecoration:'none' }}>
+                    {b.nombre_completo ?? '—'} <ArrowRight size={11} />
+                  </Link>
+                ) : (b.nombre_completo ?? '—')}
+              </td>
+              <td>
+                {b.grupo_nombre && <GrupoBadge grupo={{ nombre: b.grupo_nombre, color: b.grupo_color }} />}
               </td>
               <td><StatusBadge status={b.estatus} style={{ fontSize:'.72rem' }} /></td>
               <td style={{ color:'var(--text-muted)', fontSize:'.8rem', whiteSpace:'nowrap' }}>{fmtDate(b.fecha_apartado)}</td>

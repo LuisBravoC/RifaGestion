@@ -224,9 +224,9 @@ export default function BoletoGrid() {
         </div>
 
         {/* ── Filtros + búsqueda + toggle de vista ── */}
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '.5rem', margin: '0 0 .75rem' }}>
-          {/* Chips de filtro por estatus */}
-          <div style={{ display: 'flex', gap: '.4rem', flexWrap: 'wrap', alignItems: 'center' }}>
+        <div className="boleto-filtros-bar">
+          {/* Fila 1: chips de estatus (toda la fila en móvil) */}
+          <div className="boleto-filtros-chips">
             {[null, 'Disponible', 'Apartado', 'Liquidado', 'Vencido'].map(s => {
               const active = filterStatus === s
               const count  = s ? (stats[s] ?? 0) : boletos.length
@@ -234,58 +234,51 @@ export default function BoletoGrid() {
               return (
                 <button
                   key={s ?? 'todos'}
-                  className={`btn btn-sm ${active ? 'btn-primary' : 'btn-outline'}`}
+                  className={`btn btn-sm boleto-chip ${active ? 'btn-primary' : 'btn-outline'}`}
                   onClick={() => setFilterStatus(active ? null : s)}
                 >
                   {s ?? 'Todos'} <span style={{ opacity: .65 }}>({count})</span>
                 </button>
               )
             })}
-            {/* Filtro grupo */}
+          </div>
+
+          {/* Fila 2: grupo + búsqueda + toggle vista */}
+          <div className="boleto-filtros-tools">
             {(grupos ?? []).length > 0 && (
               <select value={filterGrupo} onChange={e => setFilterGrupo(e.target.value)}
-                style={{ height: '2.1rem', borderRadius: 'var(--radius)', border: '1px solid var(--border)', background: 'var(--bg)', color: 'var(--text)', padding: '0 .65rem', fontSize: '.82rem', flexShrink: 0 }}>
+                style={{ height: '2.1rem', borderRadius: 'var(--radius)', border: '1px solid var(--border)', background: 'var(--bg)', color: 'var(--text)', padding: '0 .65rem', fontSize: '.82rem' }}>
                 <option value="">Todos los grupos</option>
                 {(grupos ?? []).map(g => <option key={g.id} value={g.id}>{g.nombre}</option>)}
               </select>
             )}
-            {/* Búsqueda por número */}
-            <div style={{ position: 'relative', display: 'flex', alignItems: 'center' }}>
+            <div style={{ position: 'relative', display: 'flex', alignItems: 'center', flex: 1, minWidth: 0 }}>
               <Search size={14} style={{ position: 'absolute', left: '.6rem', color: 'var(--text-muted)', pointerEvents: 'none' }} />
               <input
                 type="text" inputMode="numeric" pattern="[0-9]*" placeholder="Buscar Nº"
                 value={searchNum}
                 onChange={e => setSearchNum(e.target.value)}
                 className="input-search-num"
-                style={{ paddingLeft: '2rem', paddingRight: searchNum ? '1.8rem' : '.75rem', height: '2.1rem', width: '8.5rem', fontSize: '.875rem', borderRadius: 'var(--radius)', border: '1px solid var(--border)', background: 'var(--bg)', color: 'var(--text)' }}
+                style={{ paddingLeft: '2rem', paddingRight: searchNum ? '1.8rem' : '.75rem', height: '2.1rem', width: '100%', fontSize: '.875rem', borderRadius: 'var(--radius)', border: '1px solid var(--border)', background: 'var(--bg)', color: 'var(--text)' }}
               />
               {searchNum && (
-                <button
-                  onClick={() => setSearchNum('')}
+                <button onClick={() => setSearchNum('')}
                   style={{ position: 'absolute', right: '.5rem', background: 'none', border: 'none', cursor: 'pointer', color: 'var(--text-muted)', padding: 0, lineHeight: 1, display: 'flex' }}
                 ><X size={13} /></button>
               )}
             </div>
-          </div>
-          <div style={{ display: 'flex', gap: '.3rem' }}>
-            <button
-              className={`btn btn-sm ${viewMode === 'grid' ? 'btn-primary' : 'btn-outline'}`}
-              onClick={() => setViewMode('grid')}
-              title="Vista cuadrícula"
-            >
-              <LayoutGrid size={13} />
-            </button>
-            <button
-              className={`btn btn-sm ${viewMode === 'list' ? 'btn-primary' : 'btn-outline'}`}
-              onClick={() => setViewMode('list')}
-              title="Vista lista"
-            >
-              <ListIcon size={13} />
-            </button>
+            <div style={{ display: 'flex', gap: '.3rem', flexShrink: 0 }}>
+              <button className={`btn btn-sm ${viewMode === 'grid' ? 'btn-primary' : 'btn-outline'}`} onClick={() => setViewMode('grid')} title="Vista cuadrícula"><LayoutGrid size={13} /></button>
+              <button className={`btn btn-sm ${viewMode === 'list' ? 'btn-primary' : 'btn-outline'}`} onClick={() => setViewMode('list')} title="Vista lista"><ListIcon size={13} /></button>
+            </div>
           </div>
         </div>
 
         {/* ── Vista cuadrícula o lista ── */}
+        <div
+          key={viewMode}
+          style={{ animation: 'boleto-view-in .22s ease both' }}
+        >
         {viewMode === 'grid' ? (
           <div className="boleto-grid">
             {boletosVisible.map(b => {
@@ -312,8 +305,27 @@ export default function BoletoGrid() {
           </div>
         ) : (
           <div className="boleto-list">
+            {/* Cabecera */}
+            <div className="boleto-list-header">
+              <span>#</span>
+              <span>Participante</span>
+              <span>Grupo</span>
+              <span>Estado</span>
+              <span style={{ textAlign: 'right' }}>Monto</span>
+            </div>
+
             {boletosVisible.map(b => {
               const esGanador = ganadores.some(g => g.id === b.id)
+
+              // Punto de color + etiqueta para estado
+              const estadoConfig = {
+                Liquidado:  { color: 'var(--liquidado)', label: 'Liquidado' },
+                Apartado:   { color: 'var(--abonado)',   label: 'Apartado'  },
+                Vencido:    { color: 'var(--deuda)',     label: 'Vencido'   },
+                Disponible: { color: 'var(--border)',    label: 'Disponible'},
+              }
+              const ec = estadoConfig[b.estatus] ?? estadoConfig.Disponible
+
               return (
                 <div
                   key={b.id}
@@ -324,34 +336,47 @@ export default function BoletoGrid() {
                   ].filter(Boolean).join(' ')}
                   onClick={() => openBoleto(b)}
                 >
+                  {/* #  */}
                   <span className="boleto-list-num">{fmtNum(b.numero_asignado, total)}</span>
+
+                  {/* Nombre */}
                   <span className="boleto-list-nombre">
-                    {b.nombre_completo ?? <em style={{ color: 'var(--text-muted)', fontStyle: 'normal', opacity: .55 }}>Disponible</em>}
+                    {b.nombre_completo ?? <em style={{ color: 'var(--text-muted)', fontStyle: 'normal' }}>Disponible</em>}
                   </span>
-                  {b.grupo_nombre && (
-                    <span style={{ fontSize: '.72rem', padding: '.15rem .5rem', borderRadius: '999px', background: b.grupo_color ?? '#6366f1', color: '#fff', flexShrink: 0, fontWeight: 500, lineHeight: 1.4, opacity: .92 }}>
-                      {b.grupo_nombre}
-                    </span>
-                  )}
-                  {b.estatus !== 'Disponible' && (
-                    <StatusBadge status={b.estatus} style={{ fontSize: '.7rem', flexShrink: 0 }} />
-                  )}
-                  {Number(b.total_pagado) > 0 && (
-                    <span style={{ fontSize: '.8rem', color: 'var(--liquidado)', flexShrink: 0 }}>{fmt(b.total_pagado)}</span>
-                  )}
-                  {Number(b.saldo_pendiente) > 0 && (
-                    <span style={{ fontSize: '.8rem', color: 'var(--abonado)', flexShrink: 0 }}>-{fmt(b.saldo_pendiente)}</span>
-                  )}
-                  {esGanador && (
-                    <span style={{ marginLeft: 'auto', fontSize: '.75rem', color: 'var(--abonado)', flexShrink: 0 }}>★ Ganador</span>
-                  )}
+
+                  {/* Grupo */}
+                  <span className="boleto-list-col-grupo">
+                    {b.grupo_nombre && (
+                      <span style={{ fontSize: '.68rem', padding: '.1rem .45rem', borderRadius: '999px', background: b.grupo_color ?? '#6366f1', color: '#fff', fontWeight: 600, lineHeight: 1.5, whiteSpace: 'nowrap' }}>
+                        {b.grupo_nombre}
+                      </span>
+                    )}
+                  </span>
+
+                  {/* Estado */}
+                  <span className="boleto-list-col-estatus">
+                    {esGanador ? (
+                      <span style={{ color: '#f59e0b', fontWeight: 700, fontSize: '.85rem', textShadow: '0 0 10px rgba(251,191,36,.7), 0 0 20px rgba(251,191,36,.35)' }}>★ Ganador</span>
+                    ) : b.estatus !== 'Disponible' ? (
+                      <><span className="bl-dot" style={{ background: ec.color }} />{ec.label}</>
+                    ) : null}
+                  </span>
+
+                  {/* Monto */}
+                  <span className="boleto-list-col-monto">
+                    {esGanador ? null
+                      : b.estatus === 'Liquidado'
+                        ? <span style={{ color: 'var(--liquidado)' }}>{fmt(b.total_pagado)}</span>
+                        : Number(b.saldo_pendiente) > 0
+                          ? <span style={{ color: 'var(--abonado)' }}>{fmt(b.saldo_pendiente)}</span>
+                          : null}
+                  </span>
                 </div>
               )
             })}
           </div>
         )}
-
-        {/* ── Lista de ganadores elegidos ── */}
+        </div>
         {ganadores.length > 0 && (
           <div className="ganadores-list">
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', margin: '1.5rem 0 .5rem', flexWrap: 'wrap', gap: '.5rem' }}>

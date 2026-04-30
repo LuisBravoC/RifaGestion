@@ -2841,38 +2841,146 @@ details[open].boleto-mini-historial summary::before { transform: rotate(90deg); 
   gap: .25rem;
   margin-top: .5rem;
 }
-.boleto-list-row {
-  display: flex;
+.boleto-list-row,
+.boleto-list-header {
+  display: grid;
+  grid-template-columns: 3.2rem 1fr auto 7rem 5.5rem;
   align-items: center;
-  gap: .6rem;
-  padding: .5rem .85rem;
-  border-radius: .45rem;
-  border: 1px solid var(--border);
-  border-left-width: 3px;
+  column-gap: .65rem;
+  padding: .42rem .9rem;
+}
+.boleto-list-header {
+  font-size: .72rem;
+  font-weight: 600;
+  color: var(--text-muted);
+  text-transform: uppercase;
+  letter-spacing: .05em;
+  border-bottom: 1px solid var(--border);
+  padding-bottom: .5rem;
+  margin-bottom: .2rem;
+}
+.boleto-list-row {
+  border-radius: .4rem;
   background: var(--bg-card);
   cursor: pointer;
   font-size: .85rem;
-  transition: background .12s;
-  flex-wrap: wrap;
+  transition: background .12s, opacity .12s;
+  border-left: 3px solid transparent;
+}
+@media (max-width: 600px) {
+  .boleto-list-header { display: none; }
+  .boleto-list-row {
+    grid-template-columns: 3.2rem 1fr auto;
+  }
+  .boleto-list-col-grupo,
+  .boleto-list-col-estatus,
+  .boleto-list-col-monto { display: none; }
 }
 .boleto-list-row:hover { background: var(--bg); }
-.boleto-list-disponible { border-left-color: var(--border); }
+.boleto-list-disponible { border-left-color: var(--border); opacity: .45; }
+.boleto-list-disponible:hover { opacity: 1; }
 .boleto-list-apartado   { border-left-color: var(--abonado); }
 .boleto-list-liquidado  { border-left-color: var(--liquidado); }
-.boleto-list-vencido    { border-left-color: var(--deuda); opacity: .8; }
-.boleto-list-ganador    { outline: 2px solid var(--abonado); }
+.boleto-list-vencido    { border-left-color: var(--deuda); }
+.boleto-list-ganador {
+  border-left-color: #fbbf24;
+  border-left-width: 4px;
+  background: linear-gradient(90deg,
+    color-mix(in srgb, #f59e0b 18%, var(--bg-card)) 0%,
+    color-mix(in srgb, #f59e0b 6%, var(--bg-card)) 60%,
+    var(--bg-card) 100%);
+  position: relative;
+  overflow: hidden;
+  box-shadow:
+    -4px 0 8px -1px rgba(251,191,36,.55),
+    -4px 0 18px 0px rgba(251,191,36,.3),
+    inset -1px 0 0 rgba(251,191,36,.1);
+}
+.boleto-list-ganador::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(105deg,
+    transparent 25%,
+    rgba(255,215,0,.22) 48%,
+    rgba(255,255,255,.08) 52%,
+    transparent 72%);
+  pointer-events: none;
+}
+.boleto-list-ganador:hover {
+  background: linear-gradient(90deg,
+    color-mix(in srgb, #f59e0b 26%, var(--bg-card)) 0%,
+    color-mix(in srgb, #f59e0b 10%, var(--bg-card)) 60%,
+    var(--bg-card) 100%);
+  box-shadow:
+    -4px 0 12px 0px rgba(251,191,36,.7),
+    -4px 0 28px 2px rgba(251,191,36,.35),
+    inset -1px 0 0 rgba(251,191,36,.15);
+}
+.boleto-list-ganador .boleto-list-col-estatus {
+  color: #d97706;
+  font-weight: 700;
+  font-size: .82rem;
+  text-shadow: 0 0 8px rgba(251,191,36,.5);
+}
+@keyframes boleto-view-in {
+  from { opacity: 0; transform: translateY(8px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+.boleto-filtros-bar {
+  display: flex;
+  flex-direction: column;
+  gap: .45rem;
+  margin: 0 0 .75rem;
+}
+.boleto-filtros-chips {
+  display: flex;
+  gap: .4rem;
+  flex-wrap: wrap;
+}
+.boleto-chip {
+  flex: 1 1 auto;
+  justify-content: center;
+  min-width: 5rem;
+}
+.boleto-filtros-tools {
+  display: flex;
+  gap: .4rem;
+  align-items: center;
+  flex-wrap: wrap;
+}
 .boleto-list-num {
   font-weight: 800;
-  min-width: 2.8rem;
   font-size: .88rem;
-  flex-shrink: 0;
+  font-variant-numeric: tabular-nums;
+  color: var(--accent-light);
+  white-space: nowrap;
 }
 .boleto-list-nombre {
-  flex: 1;
   min-width: 0;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
+  font-weight: 500;
+}
+.boleto-list-col-grupo { min-width: 0; }
+.boleto-list-col-estatus {
+  display: flex;
+  align-items: center;
+  gap: .35rem;
+  font-size: .8rem;
+  white-space: nowrap;
+  color: var(--text-muted);
+}
+.boleto-list-col-estatus .bl-dot {
+  width: 7px; height: 7px; border-radius: 50%; flex-shrink: 0;
+}
+.boleto-list-col-monto {
+  text-align: right;
+  font-size: .82rem;
+  white-space: nowrap;
+  font-variant-numeric: tabular-nums;
+  font-weight: 600;
 }
 
 /* -- Vista lista de participantes ----------------------------------------- */
