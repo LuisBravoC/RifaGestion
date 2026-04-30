@@ -13,6 +13,7 @@ import Drawer from '../components/Drawer.jsx'
 import ConfirmModal from '../components/ConfirmModal.jsx'
 import ErrorModal from '../components/ErrorModal.jsx'
 import { parseError } from '../lib/parseError.js'
+import { supabase } from '../lib/supabase.js'
 import GrupoBadge from '../components/GrupoBadge.jsx'
 
 const EMPTY = { nombre_completo: '', telefono_whatsapp: '', email: '', grupo_id: '' }
@@ -247,7 +248,6 @@ export default function ParticipantesList() {
 
 // Eliminación directa desde supabase (sin query wrapper extra)
 async function supabaseDeleteParticipante(id) {
-  const { supabase } = await import('../lib/supabase.js')
   const { error } = await supabase.from('participantes').delete().eq('id', id)
   if (error) throw error
 }

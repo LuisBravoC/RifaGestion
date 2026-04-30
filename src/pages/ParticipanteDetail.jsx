@@ -8,6 +8,7 @@ import {
 import { useQuery } from '../lib/useQuery.js'
 import { useToast } from '../lib/toast.jsx'
 import { fmt, fmtNum, fmtDate, today } from '../lib/formatters.js'
+import { supabase } from '../lib/supabase.js'
 import * as q from '../lib/rifas-queries.js'
 import Breadcrumbs from '../components/Breadcrumbs.jsx'
 import { useBreadcrumbs } from '../lib/useBreadcrumbs.js'
@@ -76,7 +77,6 @@ export default function ParticipanteDetail() {
   async function handleDelete() {
     setSaving(true)
     try {
-      const { supabase } = await import('../lib/supabase.js')
       const { error: err } = await supabase.from('participantes').delete().eq('id', partId)
       if (err) throw err
       toast('Participante eliminado')

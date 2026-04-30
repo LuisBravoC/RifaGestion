@@ -5,6 +5,8 @@
  * Cada función es async y lanza error en caso de fallo de Supabase.
  */
 import { supabase } from './supabase.js'
+import { cutoffDate } from './boleto-expiry.js'
+import { normalizePhone } from './formatters.js'
 
 // ─── Utilidad interna ─────────────────────────────────────────────────────────
 function check({ data, error }, label) {
@@ -362,7 +364,6 @@ export async function liberarBoleto(boletoId) {
 export async function vencerBoletosExpirados(rifaId, horasExpiracion) {
   if (!rifaId || !horasExpiracion) return
   // cutoffDate viene del módulo puro boleto-expiry.js — sin acoplamiento a Supabase
-  const { cutoffDate } = await import('./boleto-expiry.js')
   const expireDate = cutoffDate(horasExpiracion).toISOString()
   // Vencer Apartados que superaron el límite
   await supabase
@@ -635,7 +636,6 @@ export async function elegirGanador(rifaId, excluirIds = []) {
 export async function getMisBoletos(telefono) {
   if (!telefono?.trim()) return { participante: null, boletos: [] }
 
-  const { normalizePhone } = await import('./formatters.js')
   const tel = normalizePhone(telefono) || telefono.trim()
 
   const { data: parts } = await supabase
