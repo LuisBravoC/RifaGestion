@@ -2550,3 +2550,61 @@ details[open].boleto-mini-historial summary::before { transform: rotate(90deg); 
   align-items: center;
   gap: .25rem;
 }
+
+/* ── Historial de pagos — mobile list ──────────────────────────── */
+.historial-mobile-list { display: none; }
+
+@media (max-width: 640px) {
+  .historial-table-wrap { display: none; }
+  .historial-mobile-list {
+    display: flex;
+    flex-direction: column;
+    border-radius: var(--radius);
+    overflow: hidden;
+    border: 1px solid var(--border);
+  }
+}
+
+.historial-mobile-row {
+  display: flex;
+  flex-direction: column;
+  gap: .2rem;
+  padding: .55rem .85rem;
+  border-bottom: 1px solid var(--border);
+}
+.historial-mobile-row:last-child { border-bottom: none; }
+.historial-mobile-row:nth-child(odd) { background: var(--bg-muted, var(--bg)); }
+
+.historial-mobile-main {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  gap: .5rem;
+}
+.historial-mobile-nombre {
+  font-size: .875rem;
+  font-weight: 500;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  min-width: 0;
+}
+.historial-mobile-monto {
+  font-size: .88rem;
+  font-weight: 700;
+  color: var(--liquidado);
+  white-space: nowrap;
+  flex-shrink: 0;
+}
+.historial-mobile-meta {
+  display: flex;
+  gap: .35rem;
+  flex-wrap: wrap;
+  align-items: center;
+  font-size: .75rem;
+  color: var(--text-muted);
+}
+.historial-mobile-meta > span + span::before {
+  content: '·';
+  margin-right: .35rem;
+}

@@ -309,7 +309,7 @@ function ParticipanteCard({ part, onEdit, onDelete, onClick }) {
     <div
       className="part-card"
       // Decidir si lo quito o conservo
-      style={{ '--part-card-accent': accentColor }}
+      // style={{ '--part-card-accent': accentColor }}
       onClick={onClick}
     >
       {/* Cabecera: avatar + nombre + grupo + contacto */}

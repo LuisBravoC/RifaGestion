@@ -67,7 +67,7 @@ export default function HistorialPagos() {
           <p style={{ color: 'var(--text-muted)', textAlign: 'center', marginTop: '3rem' }}>Sin pagos registrados.</p>
         ) : (
           <>
-            <div className="card" style={{ overflow: 'hidden', padding: 0 }}>
+            <div className="card historial-table-wrap" style={{ overflow: 'hidden', padding: 0 }}>
               <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '.875rem' }}>
                 <thead>
                   <tr style={{ background: 'var(--bg-muted, var(--bg))', borderBottom: '1px solid var(--border)' }}>
@@ -121,6 +121,48 @@ export default function HistorialPagos() {
                   })}
                 </tbody>
               </table>
+            </div>
+
+            {/* Mobile list (≤640px) */}
+            <div className="historial-mobile-list">
+              {pagos.map(p => {
+                const boleto = p.boleto
+                const part   = boleto?.participantes
+                const rifa   = boleto?.rifa
+                const nombre = part?.nombre_completo ?? boleto?.nombre_participante ?? '—'
+                return (
+                  <div key={p.id} className="historial-mobile-row">
+                    <div className="historial-mobile-main">
+                      <span className="historial-mobile-nombre">
+                        {part?.id ? (
+                          <Link
+                            to={`/participantes/${part.id}`}
+                            style={{ color: 'var(--accent-light)', display: 'inline-flex', alignItems: 'center', gap: '.2rem', textDecoration: 'none' }}
+                          >
+                            {nombre} <ArrowRight size={10} />
+                          </Link>
+                        ) : nombre}
+                      </span>
+                      <span className="historial-mobile-monto">{fmt(p.monto)}</span>
+                    </div>
+                    <div className="historial-mobile-meta">
+                      <span>{fmtDate(p.fecha)}</span>
+                      {boleto?.numero_asignado != null && <span>#{boleto.numero_asignado}</span>}
+                      {p.metodo_pago && <span>{p.metodo_pago}</span>}
+                      {rifa && (
+                        <span>
+                          <Link
+                            to={`/rifas/${rifa.campana_id}/sorteos/${rifa.id}`}
+                            style={{ color: 'inherit', textDecoration: 'underline', textDecorationColor: 'var(--border)' }}
+                          >
+                            {rifa.nombre_premio}
+                          </Link>
+                        </span>
+                      )}
+                    </div>
+                  </div>
+                )
+              })}
             </div>
 
             {/* Paginación */}
