@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { Sun, Moon, Globe, Bell, Shield, User, Palette, Info, ChevronRight, Users, Plus, Pencil, Trash2, Check } from 'lucide-react'
+import { Sun, Moon, Globe, Bell, Shield, User, Palette, Info, ChevronRight, ChevronDown, Users, Plus, Pencil, Trash2, Check, X } from 'lucide-react'
 import Breadcrumbs from '../components/Breadcrumbs.jsx'
 import { useBreadcrumbs } from '../lib/useBreadcrumbs.js'
 import { useAuth } from '../lib/AuthContext.jsx'
@@ -44,9 +44,10 @@ export default function Opciones() {
   const toast = useToast()
 
   const { data: grupos, refetch: refetchGrupos } = useQuery(() => q.getGrupos(), [])
-  const [grupoForm,    setGrupoForm]    = useState(null)   // null | { id?, nombre, color }
+  const [grupoForm,    setGrupoForm]    = useState(null)
   const [grupoSaving,  setGrupoSaving]  = useState(false)
-  const [grupoConfirm, setGrupoConfirm] = useState(null)  // id a eliminar
+  const [grupoConfirm, setGrupoConfirm] = useState(null)
+  const [gruposOpen,   setGruposOpen]   = useState(true)
 
   const COLORES_PRESET = ['#6366f1','#10b981','#f59e0b','#ef4444','#3b82f6','#8b5cf6','#ec4899','#14b8a6','#f97316','#84cc16']
 
@@ -109,71 +110,122 @@ export default function Opciones() {
           {/* Grupos sociales */}
           {isAdmin && (
           <OptionGroup title="Grupos sociales">
-            <div style={{ padding: '.75rem 1rem' }}>
-              <p style={{ fontSize: '.85rem', color: 'var(--text-muted)', marginBottom: '.75rem' }}>
-                Clasifica participantes en grupos para filtrar boletos, historial y pendientes.
-              </p>
 
-              {/* Lista */}
-              <div style={{ display: 'flex', flexWrap: 'wrap', gap: '.5rem', marginBottom: '.75rem' }}>
-                {(grupos ?? []).map(g => (
-                  <div key={g.id} style={{ display: 'flex', alignItems: 'center', gap: '.25rem' }}>
-                    <GrupoBadge grupo={g} size="md" />
-                    <button onClick={() => setGrupoForm({ id: g.id, nombre: g.nombre, color: g.color })}
-                      style={iconBtnStyle} title="Editar"><Pencil size={12} /></button>
-                    <button onClick={() => setGrupoConfirm(g.id)}
-                      style={{ ...iconBtnStyle, color: 'var(--deuda)' }} title="Eliminar"><Trash2 size={12} /></button>
-                  </div>
-                ))}
-                {(grupos ?? []).length === 0 && (
-                  <span style={{ fontSize: '.82rem', color: 'var(--text-muted)' }}>Sin grupos todavía.</span>
-                )}
-              </div>
+            {/* Cabecera: descripción + botón nuevo (siempre visible) */}
+            <div style={{ padding: '.75rem 1rem .5rem', display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '1rem', flexWrap: 'wrap', borderBottom: '1px solid var(--border)' }}>
+              <span style={{ fontSize: '.85rem', color: 'var(--text-muted)' }}>
+                Clasifica participantes en grupos para filtrar boletos y pendientes.
+              </span>
+              <button
+                className="btn btn-primary btn-sm"
+                onClick={() => { setGrupoForm({ nombre: '', color: COLORES_PRESET[0] }); setGruposOpen(true) }}
+                style={{ display: 'inline-flex', alignItems: 'center', gap: '.3rem', flexShrink: 0 }}
+              >
+                <Plus size={13} /> Nuevo grupo
+              </button>
+            </div>
 
-              {/* Formulario inline */}
-              {grupoForm ? (
-                <div style={{ display: 'flex', flexDirection: 'column', gap: '.5rem', maxWidth: 360 }}>
+            {/* Formulario inline crear/editar */}
+            {grupoForm && (
+              <div style={{ padding: '.75rem 1rem', borderBottom: '1px solid var(--border)', background: 'var(--bg-muted)' }}>
+                <p style={{ fontSize: '.8rem', fontWeight: 600, color: 'var(--text-muted)', marginBottom: '.6rem', textTransform: 'uppercase', letterSpacing: '.04em' }}>
+                  {grupoForm.id ? 'Editar grupo' : 'Nuevo grupo'}
+                </p>
+                <div style={{ display: 'flex', gap: '.5rem', alignItems: 'center', marginBottom: '.5rem' }}>
+                  <div style={{ width: 20, height: 20, borderRadius: '50%', background: grupoForm.color, flexShrink: 0, border: '2px solid var(--border)' }} />
                   <input
                     value={grupoForm.nombre}
                     onChange={e => setGrupoForm(f => ({ ...f, nombre: e.target.value }))}
                     placeholder="Nombre del grupo"
-                    style={{ ...inputStyle }}
+                    style={{ ...inputStyle, flex: 1 }}
                     autoFocus
                     onKeyDown={e => { if (e.key === 'Enter') handleGrupoSave(); if (e.key === 'Escape') setGrupoForm(null) }}
                   />
-                  <div style={{ display: 'flex', gap: '.35rem', flexWrap: 'wrap' }}>
-                    {COLORES_PRESET.map(c => (
-                      <button key={c} onClick={() => setGrupoForm(f => ({ ...f, color: c }))}
-                        style={{
-                          width: 22, height: 22, borderRadius: '50%', border: '2px solid',
-                          borderColor: grupoForm.color === c ? '#000' : 'transparent',
-                          background: c, cursor: 'pointer', padding: 0, flexShrink: 0,
-                          outline: grupoForm.color === c ? '2px solid var(--accent-light)' : 'none',
-                          outlineOffset: 1,
-                        }}
-                      />
-                    ))}
-                    <input type="color" value={grupoForm.color}
-                      onChange={e => setGrupoForm(f => ({ ...f, color: e.target.value }))}
-                      style={{ width: 22, height: 22, padding: 0, border: 'none', cursor: 'pointer', borderRadius: '50%' }}
-                      title="Color personalizado"
-                    />
-                  </div>
-                  <div style={{ display: 'flex', gap: '.4rem' }}>
-                    <button className="btn btn-primary btn-sm" onClick={handleGrupoSave} disabled={grupoSaving}>
-                      <Check size={13} /> {grupoForm.id ? 'Guardar' : 'Crear'}
-                    </button>
-                    <button className="btn btn-outline btn-sm" onClick={() => setGrupoForm(null)}>Cancelar</button>
-                  </div>
                 </div>
-              ) : (
-                <button className="btn btn-outline btn-sm"
-                  onClick={() => setGrupoForm({ nombre: '', color: COLORES_PRESET[0] })}
-                  style={{ display: 'inline-flex', alignItems: 'center', gap: '.3rem' }}>
-                  <Plus size={13} /> Nuevo grupo
+                <div style={{ display: 'flex', gap: '.35rem', flexWrap: 'wrap', marginBottom: '.6rem', alignItems: 'center' }}>
+                  {COLORES_PRESET.map(c => (
+                    <button key={c} onClick={() => setGrupoForm(f => ({ ...f, color: c }))}
+                      title={c}
+                      style={{
+                        width: 24, height: 24, borderRadius: '50%', border: '3px solid',
+                        borderColor: grupoForm.color === c ? 'var(--text)' : 'transparent',
+                        background: c, cursor: 'pointer', padding: 0, flexShrink: 0,
+                        boxShadow: grupoForm.color === c ? '0 0 0 2px var(--bg), 0 0 0 4px ' + c : 'none',
+                        transition: 'box-shadow .15s',
+                      }}
+                    />
+                  ))}
+                  <input type="color" value={grupoForm.color}
+                    onChange={e => setGrupoForm(f => ({ ...f, color: e.target.value }))}
+                    style={{ width: 24, height: 24, padding: 0, border: '2px solid var(--border)', cursor: 'pointer', borderRadius: '50%', background: 'none' }}
+                    title="Color personalizado"
+                  />
+                </div>
+                <div style={{ display: 'flex', gap: '.4rem' }}>
+                  <button className="btn btn-primary btn-sm" onClick={handleGrupoSave} disabled={grupoSaving}>
+                    <Check size={13} /> {grupoForm.id ? 'Guardar cambios' : 'Crear grupo'}
+                  </button>
+                  <button className="btn btn-outline btn-sm" onClick={() => setGrupoForm(null)}>
+                    <X size={13} /> Cancelar
+                  </button>
+                </div>
+              </div>
+            )}
+
+            {/* Toggle colapsable */}
+            {(grupos ?? []).length > 0 && (
+              <button
+                onClick={() => setGruposOpen(o => !o)}
+                style={{ width: '100%', background: 'none', border: 'none', cursor: 'pointer', padding: '.5rem 1rem', display: 'flex', alignItems: 'center', justifyContent: 'space-between', color: 'var(--text-muted)', fontSize: '.82rem', borderBottom: gruposOpen ? '1px solid var(--border)' : 'none' }}
+              >
+                <span>{(grupos ?? []).length} {(grupos ?? []).length === 1 ? 'grupo' : 'grupos'} registrados</span>
+                <ChevronDown size={15} style={{ transform: gruposOpen ? 'rotate(180deg)' : 'none', transition: 'transform .2s' }} />
+              </button>
+            )}
+
+            {/* Lista de grupos */}
+            {gruposOpen && (grupos ?? []).map((g, i) => (
+              <div
+                key={g.id}
+                style={{
+                  display: 'flex', alignItems: 'center', gap: '.75rem',
+                  padding: '.6rem 1rem',
+                  borderBottom: i < (grupos.length - 1) ? '1px solid var(--border)' : 'none',
+                  background: grupoForm?.id === g.id ? 'var(--bg-muted)' : 'transparent',
+                  transition: 'background .15s',
+                }}
+              >
+                {/* Pastilla color */}
+                <div style={{ width: 12, height: 12, borderRadius: '50%', background: g.color, flexShrink: 0 }} />
+                {/* Nombre */}
+                <GrupoBadge grupo={g} size="md" />
+                {/* Spacer */}
+                <div style={{ flex: 1 }} />
+                {/* Acciones */}
+                <button
+                  className="btn btn-icon"
+                  onClick={() => { setGrupoForm({ id: g.id, nombre: g.nombre, color: g.color }); setGruposOpen(true) }}
+                  title="Editar grupo"
+                >
+                  <Pencil size={13} />
                 </button>
-              )}
-            </div>
+                <button
+                  className="btn btn-icon btn-danger-icon"
+                  onClick={() => setGrupoConfirm(g.id)}
+                  title="Eliminar grupo"
+                >
+                  <Trash2 size={13} />
+                </button>
+              </div>
+            ))}
+
+            {/* Estado vacío */}
+            {(grupos ?? []).length === 0 && !grupoForm && (
+              <div style={{ padding: '.75rem 1rem', fontSize: '.85rem', color: 'var(--text-muted)', textAlign: 'center' }}>
+                Sin grupos todavía. Crea el primero con el botón de arriba.
+              </div>
+            )}
+
           </OptionGroup>
           )}
 
@@ -244,11 +296,6 @@ export default function Opciones() {
   )
 }
 
-const iconBtnStyle = {
-  background: 'none', border: 'none', cursor: 'pointer',
-  color: 'var(--text-muted)', padding: '.1rem', display: 'inline-flex',
-  alignItems: 'center',
-}
 const inputStyle = {
   background: 'var(--bg)', border: '1px solid var(--border)',
   borderRadius: 'var(--radius)', padding: '.4rem .7rem',

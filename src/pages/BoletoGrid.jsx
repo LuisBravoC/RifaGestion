@@ -328,6 +328,11 @@ export default function BoletoGrid() {
                   <span className="boleto-list-nombre">
                     {b.nombre_completo ?? <em style={{ color: 'var(--text-muted)', fontStyle: 'normal', opacity: .55 }}>Disponible</em>}
                   </span>
+                  {b.grupo_nombre && (
+                    <span style={{ fontSize: '.72rem', padding: '.15rem .5rem', borderRadius: '999px', background: b.grupo_color ?? '#6366f1', color: '#fff', flexShrink: 0, fontWeight: 500, lineHeight: 1.4, opacity: .92 }}>
+                      {b.grupo_nombre}
+                    </span>
+                  )}
                   {b.estatus !== 'Disponible' && (
                     <StatusBadge status={b.estatus} style={{ fontSize: '.7rem', flexShrink: 0 }} />
                   )}

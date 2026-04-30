@@ -3,18 +3,21 @@ import { Link } from 'react-router-dom'
 import { AlertCircle, ArrowRight, LayoutGrid, ChevronDown } from 'lucide-react'
 import { useQuery } from '../lib/useQuery.js'
 import { fmt, fmtNum, fmtDate } from '../lib/formatters.js'
-import { getPendientes, getCampanas, getRifasByCampana } from '../lib/rifas-queries.js'
+import { getPendientes, getCampanas, getRifasByCampana, getGrupos } from '../lib/rifas-queries.js'
 import Breadcrumbs from '../components/Breadcrumbs.jsx'
 import LoadingSpinner, { ErrorMsg } from '../components/LoadingSpinner.jsx'
 import StatusBadge from '../components/StatusBadge.jsx'
 import WhatsAppBtn from '../components/WhatsAppBtn.jsx'
+import GrupoBadge from '../components/GrupoBadge.jsx'
 
 export default function Pendientes() {
   const [campanaId, setCampanaId] = useState('')
   const [rifaId,    setRifaId]    = useState('')
   const [estatus,   setEstatus]   = useState('')
+  const [grupoId,   setGrupoId]   = useState('')
 
   const campanasQ = useQuery(() => getCampanas(), [])
+  const gruposQ   = useQuery(() => getGrupos(), [])
   const rifasQ    = useQuery(
     () => campanaId ? getRifasByCampana(campanaId) : Promise.resolve([]),
     [campanaId]
@@ -25,7 +28,11 @@ export default function Pendientes() {
   )
 
   const crumbs = [{ label: 'Pendientes de pago' }]
-  const pendientes = pendQ.data ?? []
+  const pendientes = useMemo(() => {
+    const raw = pendQ.data ?? []
+    if (!grupoId) return raw
+    return raw.filter(b => b.grupo_id === grupoId)
+  }, [pendQ.data, grupoId])
 
   const { totalSaldo, totalAbonado } = useMemo(() => ({
     totalSaldo:   pendientes.reduce((s, b) => s + Number(b.saldo_pendiente), 0),
@@ -71,6 +78,13 @@ export default function Pendientes() {
             <select value={rifaId} onChange={e => setRifaId(e.target.value)} style={selectStyle}>
               <option value="">Todas las rifas</option>
               {(rifasQ.data ?? []).map(r => <option key={r.id} value={r.id}>{r.nombre_premio}</option>)}
+            </select>
+          )}
+
+          {(gruposQ.data ?? []).length > 0 && (
+            <select value={grupoId} onChange={e => setGrupoId(e.target.value)} style={selectStyle}>
+              <option value="">Todos los grupos</option>
+              {(gruposQ.data ?? []).map(g => <option key={g.id} value={g.id}>{g.nombre}</option>)}
             </select>
           )}
 
@@ -229,11 +243,16 @@ function PendientesList({ boletos }) {
                 </Link>
               </td>
               <td>
-                {b.participante_id ? (
-                  <Link to={`/participantes/${b.participante_id}`} style={{ color:'inherit', display:'inline-flex', alignItems:'center', gap:'.2rem', textDecoration:'none' }}>
-                    {b.nombre_completo ?? '—'} <ArrowRight size={11} />
-                  </Link>
-                ) : (b.nombre_completo ?? '—')}
+                <div style={{ display:'flex', flexDirection:'column', gap:'.2rem' }}>
+                  {b.grupo_nombre && (
+                    <GrupoBadge grupo={{ nombre: b.grupo_nombre, color: b.grupo_color }} />
+                  )}
+                  {b.participante_id ? (
+                    <Link to={`/participantes/${b.participante_id}`} style={{ color:'inherit', display:'inline-flex', alignItems:'center', gap:'.2rem', textDecoration:'none' }}>
+                      {b.nombre_completo ?? '—'} <ArrowRight size={11} />
+                    </Link>
+                  ) : (b.nombre_completo ?? '—')}
+                </div>
               </td>
               <td><StatusBadge status={b.estatus} style={{ fontSize:'.72rem' }} /></td>
               <td style={{ color:'var(--text-muted)', fontSize:'.8rem', whiteSpace:'nowrap' }}>{fmtDate(b.fecha_apartado)}</td>
@@ -256,6 +275,7 @@ function PendientesList({ boletos }) {
                 #{fmtNum(b.numero_asignado, b.cantidad_boletos)}
               </Link>
               <StatusBadge status={b.estatus} style={{ fontSize:'.68rem' }} />
+              {b.grupo_nombre && <GrupoBadge grupo={{ nombre: b.grupo_nombre, color: b.grupo_color }} />}
               <span style={{ marginLeft:'auto', fontWeight:700, color:'var(--abonado)', flexShrink:0 }}>{fmt(b.saldo_pendiente)}</span>
             </div>
             <div style={{ display:'flex', alignItems:'center', gap:'.5rem' }}>
