@@ -21,7 +21,7 @@ const ESTATUS_OPTS = [
 const ESTATUS_META = {
   Apartado:   { label: 'Apartado',   color: 'var(--abonado)',   bg: 'color-mix(in srgb, var(--abonado) 12%, transparent)' },
   Liquidado:  { label: 'Pagado',     color: 'var(--liquidado)', bg: 'color-mix(in srgb, var(--liquidado) 12%, transparent)' },
-  Disponible: { label: 'Liberado',   color: 'var(--text-muted)', bg: 'color-mix(in srgb, var(--text-muted) 8%, transparent)' },
+  Disponible: { label: 'Libre',     color: 'var(--text-muted)', bg: 'color-mix(in srgb, var(--text-muted) 8%, transparent)' },
   Vencido:    { label: 'Vencido',    color: 'var(--deuda)',     bg: 'color-mix(in srgb, var(--deuda) 12%, transparent)' },
 }
 
@@ -60,11 +60,23 @@ const SELECT_STYLE = {
   color: 'var(--text)',
   padding: '0 .75rem',
   fontSize: '.875rem',
+  width: '100%',
 }
 
 const INPUT_STYLE = {
   ...SELECT_STYLE,
-  minWidth: '10rem',
+}
+
+const LABEL_STYLE = {
+  fontSize: '.72rem',
+  color: 'var(--text-muted)',
+  fontWeight: 600,
+}
+
+const FILTER_FIELD = {
+  display: 'flex',
+  flexDirection: 'column',
+  gap: '.25rem',
 }
 
 export default function Bitacora() {
@@ -128,11 +140,17 @@ export default function Bitacora() {
         </div>
 
         {/* ── Filtros ── */}
-        <div style={{ display: 'flex', gap: '.65rem', flexWrap: 'wrap', alignItems: 'flex-end', marginBottom: '1.25rem' }}>
+        <div style={{
+          display: 'grid',
+          gridTemplateColumns: 'repeat(auto-fill, minmax(10.5rem, 1fr))',
+          gap: '.65rem',
+          marginBottom: '1.25rem',
+          alignItems: 'end',
+        }}>
           {/* Campaña */}
-          <div style={{ display: 'flex', flexDirection: 'column', gap: '.25rem' }}>
-            <label style={{ fontSize: '.72rem', color: 'var(--text-muted)', fontWeight: 600 }}>Campaña</label>
-            <select value={campanaId} onChange={e => handleCampana(e.target.value)} style={{ ...SELECT_STYLE, minWidth: '13rem' }}>
+          <div style={FILTER_FIELD}>
+            <label style={LABEL_STYLE}>Campaña</label>
+            <select value={campanaId} onChange={e => handleCampana(e.target.value)} style={SELECT_STYLE}>
               <option value="">Todas las campañas</option>
               {(campanasQ.data ?? []).map(c => <option key={c.id} value={c.id}>{c.nombre}</option>)}
             </select>
@@ -140,9 +158,9 @@ export default function Bitacora() {
 
           {/* Rifa — solo si hay campaña seleccionada */}
           {campanaId && (
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '.25rem' }}>
-              <label style={{ fontSize: '.72rem', color: 'var(--text-muted)', fontWeight: 600 }}>Rifa</label>
-              <select value={rifaId} onChange={e => { setRifaId(e.target.value); setPage(0) }} style={{ ...SELECT_STYLE, minWidth: '13rem' }}>
+            <div style={FILTER_FIELD}>
+              <label style={LABEL_STYLE}>Rifa</label>
+              <select value={rifaId} onChange={e => { setRifaId(e.target.value); setPage(0) }} style={SELECT_STYLE}>
                 <option value="">Todas las rifas</option>
                 {(rifasQ.data ?? []).map(r => <option key={r.id} value={r.id}>{r.nombre_premio}</option>)}
               </select>
@@ -150,56 +168,59 @@ export default function Bitacora() {
           )}
 
           {/* Movimiento */}
-          <div style={{ display: 'flex', flexDirection: 'column', gap: '.25rem' }}>
-            <label style={{ fontSize: '.72rem', color: 'var(--text-muted)', fontWeight: 600 }}>Movimiento</label>
-            <select value={estatusNuevo} onChange={e => { setEstatusNuevo(e.target.value); setPage(0) }} style={{ ...SELECT_STYLE, minWidth: '11rem' }}>
+          <div style={FILTER_FIELD}>
+            <label style={LABEL_STYLE}>Movimiento</label>
+            <select value={estatusNuevo} onChange={e => { setEstatusNuevo(e.target.value); setPage(0) }} style={SELECT_STYLE}>
               {ESTATUS_OPTS.map(o => <option key={o.value} value={o.value}>{o.label}</option>)}
             </select>
           </div>
 
           {/* Grupo */}
-          <div style={{ display: 'flex', flexDirection: 'column', gap: '.25rem' }}>
-            <label style={{ fontSize: '.72rem', color: 'var(--text-muted)', fontWeight: 600 }}>Grupo</label>
-            <select value={grupoId} onChange={e => { setGrupoId(e.target.value); setPage(0) }} style={{ ...SELECT_STYLE, minWidth: '10rem' }}>
+          <div style={FILTER_FIELD}>
+            <label style={LABEL_STYLE}>Grupo</label>
+            <select value={grupoId} onChange={e => { setGrupoId(e.target.value); setPage(0) }} style={SELECT_STYLE}>
               <option value="">Todos los grupos</option>
               {(gruposQ.data ?? []).map(g => <option key={g.id} value={g.id}>{g.nombre}</option>)}
             </select>
           </div>
 
           {/* Fecha desde */}
-          <div style={{ display: 'flex', flexDirection: 'column', gap: '.25rem' }}>
-            <label style={{ fontSize: '.72rem', color: 'var(--text-muted)', fontWeight: 600 }}>Desde</label>
+          <div style={FILTER_FIELD}>
+            <label style={LABEL_STYLE}>Desde</label>
             <input type="date" value={fechaDesde} onChange={e => { setFechaDesde(e.target.value); setPage(0) }} style={INPUT_STYLE} />
           </div>
 
           {/* Fecha hasta */}
-          <div style={{ display: 'flex', flexDirection: 'column', gap: '.25rem' }}>
-            <label style={{ fontSize: '.72rem', color: 'var(--text-muted)', fontWeight: 600 }}>Hasta</label>
+          <div style={FILTER_FIELD}>
+            <label style={LABEL_STYLE}>Hasta</label>
             <input type="date" value={fechaHasta} onChange={e => { setFechaHasta(e.target.value); setPage(0) }} style={INPUT_STYLE} />
           </div>
 
           {/* Búsqueda nombre */}
-          <div style={{ display: 'flex', flexDirection: 'column', gap: '.25rem' }}>
-            <label style={{ fontSize: '.72rem', color: 'var(--text-muted)', fontWeight: 600 }}>Participante</label>
+          <div style={FILTER_FIELD}>
+            <label style={LABEL_STYLE}>Participante</label>
             <input
               type="search"
               value={busqueda}
               onChange={e => { setBusqueda(e.target.value); setPage(0) }}
               placeholder="Buscar nombre…"
-              style={{ ...INPUT_STYLE, minWidth: '13rem' }}
+              style={INPUT_STYLE}
             />
           </div>
 
-          {/* Limpiar */}
+          {/* Limpiar — label invisible para alinear altura con los demás */}
           {hayFiltros && (
-            <button
-              className="btn btn-outline btn-sm"
-              onClick={resetFiltros}
-              style={{ alignSelf: 'flex-end', gap: '.3rem' }}
-              title="Limpiar filtros"
-            >
-              <X size={13} /> Limpiar
-            </button>
+            <div style={FILTER_FIELD}>
+              <label style={{ ...LABEL_STYLE, visibility: 'hidden' }}>—</label>
+              <button
+                className="btn btn-outline"
+                onClick={resetFiltros}
+                style={{ height: '2.2rem', width: '100%', gap: '.3rem', justifyContent: 'center' }}
+                title="Limpiar filtros"
+              >
+                <X size={13} /> Limpiar
+              </button>
+            </div>
           )}
         </div>
 
@@ -224,15 +245,16 @@ export default function Bitacora() {
         ) : (
           <>
             {/* Tabla desktop */}
-            <div className="card" style={{ overflow: 'hidden', padding: 0 }}>
+            <div className="card historial-table-wrap" style={{ overflow: 'hidden', padding: 0 }}>
               <div style={{ overflowX: 'auto' }}>
                 <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '.875rem' }}>
                   <thead>
                     <tr style={{ background: 'var(--bg-muted, var(--bg))', borderBottom: '1px solid var(--border)' }}>
                       <TH>Fecha y hora</TH>
                       <TH>Boleto</TH>
-                      <TH>Movimiento</TH>
                       <TH>Antes</TH>
+                      <th style={{ padding: '0', width: '1.2rem' }} />
+                      <TH>Movimiento</TH>
                       <TH>Participante</TH>
                       <TH>Grupo</TH>
                       <TH>Rifa</TH>
@@ -248,14 +270,17 @@ export default function Bitacora() {
                         <td style={{ padding: '.5rem .9rem', textAlign: 'center', fontWeight: 700, fontVariantNumeric: 'tabular-nums' }}>
                           #{m.numero_asignado}
                         </td>
-                        <td style={{ padding: '.5rem .9rem' }}>
-                          <EstatusBadge value={m.estatus_nuevo} />
-                        </td>
-                        <td style={{ padding: '.5rem .9rem' }}>
+                        <td style={{ padding: '.5rem .5rem .5rem .9rem', textAlign: 'left' }}>
                           {m.estatus_anterior
                             ? <EstatusBadge value={m.estatus_anterior} />
                             : <span style={{ color: 'var(--text-muted)', fontSize: '.75rem' }}>—</span>
                           }
+                        </td>
+                        <td style={{ padding: '0', textAlign: 'center', width: '1.2rem', color: 'var(--text-muted)' }}>
+                          {m.estatus_anterior && <ArrowRight size={11} />}
+                        </td>
+                        <td style={{ padding: '.5rem .9rem .5rem .5rem' }}>
+                          <EstatusBadge value={m.estatus_nuevo} />
                         </td>
                         <td style={{ padding: '.5rem .9rem' }}>
                           {m.participante_id ? (
@@ -305,13 +330,18 @@ export default function Bitacora() {
                 <div key={m.id} className="historial-mobile-row">
                   <div className="historial-mobile-main">
                     <span style={{ fontWeight: 700 }}>#{m.numero_asignado}</span>
-                    <EstatusBadge value={m.estatus_nuevo} />
+                    <span style={{ display: 'inline-flex', alignItems: 'center', gap: '.3rem' }}>
+                      {m.estatus_anterior && (
+                        <>
+                          <EstatusBadge value={m.estatus_anterior} />
+                          <ArrowRight size={11} style={{ color: 'var(--text-muted)', flexShrink: 0 }} />
+                        </>
+                      )}
+                      <EstatusBadge value={m.estatus_nuevo} />
+                    </span>
                   </div>
                   <div className="historial-mobile-meta">
                     <span>{fmtDateTime(m.created_at)}</span>
-                    {m.estatus_anterior && (
-                      <span style={{ color: 'var(--text-muted)' }}>← <EstatusBadge value={m.estatus_anterior} /></span>
-                    )}
                   </div>
                   <div className="historial-mobile-meta" style={{ marginTop: '.25rem' }}>
                     {m.participante_id ? (
