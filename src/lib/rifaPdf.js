@@ -67,9 +67,9 @@ export function generarRifaPDF(rifa, boletos, stats, total) {
   .footer{border-top:1px solid #1e293b;padding-top:1.25rem;display:flex;justify-content:space-between;align-items:center;font-size:.72rem;color:#475569;flex-wrap:wrap;gap:.5rem}
   .footer strong{color:#6366f1}
   @media print{
-    body{background:#0f172a!important;-webkit-print-color-adjust:exact;print-color-adjust:exact}
     @page{size:A4;margin:1.5cm}
   }
+  *{-webkit-print-color-adjust:exact!important;print-color-adjust:exact!important;color-adjust:exact!important}
 </style>
 </head>
 <body>
