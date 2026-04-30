@@ -119,6 +119,71 @@ GROUP BY
   g.nombre, g.color,
   r.precio_boleto, r.nombre_premio, r.campana_id, r.fecha_sorteo, r.cantidad_boletos;
 
+-- ── BITÁCORA DE MOVIMIENTOS DE BOLETOS ──────────────────────────────────────
+-- Registra cada cambio de estatus en un boleto (trigger automático).
+-- ─────────────────────────────────────────────────────────────────────────────
+CREATE TABLE IF NOT EXISTS bitacora_boletos (
+  id                  uuid        PRIMARY KEY DEFAULT gen_random_uuid(),
+  boleto_id           uuid        NOT NULL REFERENCES boletos(id)   ON DELETE CASCADE,
+  rifa_id             uuid        NOT NULL  REFERENCES rifas(id)    ON DELETE CASCADE,
+  campana_id          uuid        NOT NULL  REFERENCES campanas(id) ON DELETE CASCADE,
+  numero_asignado     int         NOT NULL,
+  estatus_anterior    text,                       -- NULL en la primera asignación
+  estatus_nuevo       text        NOT NULL,
+  nombre_participante text,                       -- snapshot del momento
+  participante_id     uuid        REFERENCES participantes(id) ON DELETE SET NULL,
+  grupo_id            uuid        REFERENCES grupos(id) ON DELETE SET NULL,
+  created_at          timestamptz NOT NULL DEFAULT now()
+);
+
+CREATE INDEX IF NOT EXISTS idx_bitacora_boleto    ON bitacora_boletos(boleto_id);
+CREATE INDEX IF NOT EXISTS idx_bitacora_rifa      ON bitacora_boletos(rifa_id);
+CREATE INDEX IF NOT EXISTS idx_bitacora_campana   ON bitacora_boletos(campana_id);
+CREATE INDEX IF NOT EXISTS idx_bitacora_estatus   ON bitacora_boletos(estatus_nuevo);
+CREATE INDEX IF NOT EXISTS idx_bitacora_created   ON bitacora_boletos(created_at DESC);
+CREATE INDEX IF NOT EXISTS idx_bitacora_grupo     ON bitacora_boletos(grupo_id);
+
+-- Función de trigger: se ejecuta en cada UPDATE de estatus en boletos
+CREATE OR REPLACE FUNCTION fn_bitacora_boletos()
+RETURNS TRIGGER LANGUAGE plpgsql AS $$
+DECLARE
+  v_campana_id uuid;
+BEGIN
+  -- Solo registrar si cambia el estatus (o es INSERT con asignación a participante)
+  IF (TG_OP = 'INSERT' AND NEW.participante_id IS NOT NULL)
+     OR (TG_OP = 'UPDATE' AND OLD.estatus IS DISTINCT FROM NEW.estatus) THEN
+
+    -- Obtener campana_id desde rifas
+    SELECT campana_id INTO v_campana_id FROM rifas WHERE id = NEW.rifa_id;
+
+    INSERT INTO bitacora_boletos (
+      boleto_id, rifa_id, campana_id, numero_asignado,
+      estatus_anterior, estatus_nuevo,
+      nombre_participante, participante_id, grupo_id
+    )
+    SELECT
+      NEW.id,
+      NEW.rifa_id,
+      v_campana_id,
+      NEW.numero_asignado,
+      CASE WHEN TG_OP = 'UPDATE' THEN OLD.estatus ELSE NULL END,
+      NEW.estatus,
+      COALESCE(NEW.nombre_participante, p.nombre_completo),
+      NEW.participante_id,
+      p.grupo_id
+    FROM (SELECT NULL::uuid AS grupo_id, NULL::text AS nombre_completo) AS _default
+    LEFT JOIN participantes p ON p.id = NEW.participante_id;
+  END IF;
+  RETURN NEW;
+END;
+$$;
+
+-- Trigger sobre la tabla boletos
+DROP TRIGGER IF EXISTS trg_bitacora_boletos ON boletos;
+CREATE TRIGGER trg_bitacora_boletos
+  AFTER INSERT OR UPDATE ON boletos
+  FOR EACH ROW EXECUTE FUNCTION fn_bitacora_boletos();
+
 -- ── RLS ─────────────────────────────────────────────────────────────────────
 ALTER TABLE campanas             ENABLE ROW LEVEL SECURITY;
 ALTER TABLE rifas                ENABLE ROW LEVEL SECURITY;
@@ -126,6 +191,7 @@ ALTER TABLE grupos               ENABLE ROW LEVEL SECURITY;
 ALTER TABLE participantes        ENABLE ROW LEVEL SECURITY;
 ALTER TABLE boletos              ENABLE ROW LEVEL SECURITY;
 ALTER TABLE historial_pagos_rifa ENABLE ROW LEVEL SECURITY;
+ALTER TABLE bitacora_boletos     ENABLE ROW LEVEL SECURITY;
 
 -- Usuarios autenticados: acceso total
 CREATE POLICY "rifas_auth_all" ON campanas             FOR ALL TO authenticated USING (true) WITH CHECK (true);
@@ -134,6 +200,7 @@ CREATE POLICY "rifas_auth_all" ON grupos               FOR ALL TO authenticated 
 CREATE POLICY "rifas_auth_all" ON participantes        FOR ALL TO authenticated USING (true) WITH CHECK (true);
 CREATE POLICY "rifas_auth_all" ON boletos              FOR ALL TO authenticated USING (true) WITH CHECK (true);
 CREATE POLICY "rifas_auth_all" ON historial_pagos_rifa FOR ALL TO authenticated USING (true) WITH CHECK (true);
+CREATE POLICY "rifas_auth_all" ON bitacora_boletos     FOR ALL TO authenticated USING (true) WITH CHECK (true);
 
 -- Usuarios anónimos: solo lectura (para la página pública /mis-boletos)
 CREATE POLICY "rifas_anon_read" ON grupos               FOR SELECT TO anon USING (true);

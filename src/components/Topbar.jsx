@@ -1,5 +1,5 @@
 import { Link, NavLink, useNavigate } from 'react-router-dom'
-import { Ticket, Search, X, Settings, LogOut, Menu, Users, CreditCard, AlertCircle } from 'lucide-react'
+import { Ticket, Search, X, Settings, LogOut, Menu, Users, CreditCard, AlertCircle, ClipboardList } from 'lucide-react'
 import { useState, useRef, useEffect, useCallback } from 'react'
 import { buscarParticipantes } from '../lib/rifas-queries.js'
 import { useAuth } from '../lib/AuthContext.jsx'
@@ -111,6 +111,9 @@ export default function Topbar() {
           <NavLink to="/historial" className={({ isActive }) => 'topbar-nav-link' + (isActive ? ' active' : '')}>
             <CreditCard size={15} /> <span className="nav-label">Historial</span>
           </NavLink>
+          <NavLink to="/bitacora" className={({ isActive }) => 'topbar-nav-link' + (isActive ? ' active' : '')}>
+            <ClipboardList size={15} /> <span className="nav-label">Bitácora</span>
+          </NavLink>
           <NavLink to="/pendientes" className={({ isActive }) => 'topbar-nav-link' + (isActive ? ' active' : '')}>
             <AlertCircle size={15} /> <span className="nav-label">Pendientes</span>
           </NavLink>
@@ -143,6 +146,9 @@ export default function Topbar() {
             </NavLink>
             <NavLink to="/historial" className={({ isActive }) => 'mobile-nav-link' + (isActive ? ' active' : '')} onClick={() => setMenuOpen(false)}>
               <CreditCard size={16} /> Historial
+            </NavLink>
+            <NavLink to="/bitacora" className={({ isActive }) => 'mobile-nav-link' + (isActive ? ' active' : '')} onClick={() => setMenuOpen(false)}>
+              <ClipboardList size={16} /> Bitácora
             </NavLink>
             <NavLink to="/pendientes" className={({ isActive }) => 'mobile-nav-link' + (isActive ? ' active' : '')} onClick={() => setMenuOpen(false)}>
               <AlertCircle size={16} /> Pendientes

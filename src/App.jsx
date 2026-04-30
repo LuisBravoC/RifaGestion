@@ -15,6 +15,7 @@ import ParticipantesList from './pages/ParticipantesList.jsx'
 import ParticipanteDetail from './pages/ParticipanteDetail.jsx'
 import HistorialPagos from './pages/HistorialPagos.jsx'
 import Pendientes from './pages/Pendientes.jsx'
+import Bitacora from './pages/Bitacora.jsx'
 
 function AppShell() {
   const { session } = useAuth()
@@ -36,6 +37,7 @@ function AppShell() {
           <Route path="/participantes/:partId" element={<ProtectedRoute><ParticipanteDetail /></ProtectedRoute>} />
           <Route path="/historial" element={<ProtectedRoute><HistorialPagos /></ProtectedRoute>} />
           <Route path="/pendientes" element={<ProtectedRoute><Pendientes /></ProtectedRoute>} />
+          <Route path="/bitacora" element={<ProtectedRoute><Bitacora /></ProtectedRoute>} />
 
           <Route path="*" element={<Navigate to="/rifas" replace />} />
         </Routes>

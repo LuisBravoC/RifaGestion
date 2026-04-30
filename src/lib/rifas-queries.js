@@ -522,6 +522,69 @@ export async function getPagosByBoleto(boletoId) {
   )
 }
 
+// =============================================================================
+// BITÁCORA DE MOVIMIENTOS
+// =============================================================================
+
+/**
+ * Consulta la bitácora de movimientos de boletos con filtros y paginación.
+ * @param {object} opts
+ * @param {string|null} opts.campanaId     - Filtrar por campaña
+ * @param {string|null} opts.rifaId        - Filtrar por rifa
+ * @param {string|null} opts.estatusNuevo  - Filtrar por tipo de movimiento
+ * @param {string|null} opts.grupoId       - Filtrar por grupo del participante
+ * @param {string|null} opts.fechaDesde    - ISO date string (inclusive)
+ * @param {string|null} opts.fechaHasta    - ISO date string (inclusive)
+ * @param {string|null} opts.busqueda      - Texto libre en nombre_participante
+ * @param {number}      opts.page          - Página (0-based)
+ * @param {number}      opts.pageSize
+ */
+export async function getBitacora({
+  campanaId    = null,
+  rifaId       = null,
+  estatusNuevo = null,
+  grupoId      = null,
+  fechaDesde   = null,
+  fechaHasta   = null,
+  busqueda     = null,
+  page         = 0,
+  pageSize     = 50,
+} = {}) {
+  let q = supabase
+    .from('bitacora_boletos')
+    .select(`
+      id, created_at,
+      boleto_id, rifa_id, campana_id, numero_asignado,
+      estatus_anterior, estatus_nuevo,
+      nombre_participante, participante_id, grupo_id,
+      rifa:rifas(id, nombre_premio),
+      campana:campanas(id, nombre),
+      grupo:grupos(id, nombre, color),
+      participante:participantes(grupo:grupos(id, nombre, color))
+    `, { count: 'exact' })
+    .order('created_at', { ascending: false })
+    .range(page * pageSize, (page + 1) * pageSize - 1)
+
+  if (campanaId)    q = q.eq('campana_id',   campanaId)
+  if (rifaId)       q = q.eq('rifa_id',      rifaId)
+  if (estatusNuevo) q = q.eq('estatus_nuevo', estatusNuevo)
+  if (grupoId)      q = q.eq('grupo_id',     grupoId)
+  if (fechaDesde)   q = q.gte('created_at',  fechaDesde)
+  if (fechaHasta) {
+    // Incluir todo el día hasta
+    const hasta = new Date(fechaHasta)
+    hasta.setDate(hasta.getDate() + 1)
+    q = q.lt('created_at', hasta.toISOString())
+  }
+  if (busqueda?.trim()) {
+    q = q.ilike('nombre_participante', `%${busqueda.trim()}%`)
+  }
+
+  const { data, error, count } = await q
+  if (error) { console.error('[rifas] getBitacora', error); throw error }
+  return { movimientos: data ?? [], total: count ?? 0 }
+}
+
 /**
  * Historial global de pagos con información del boleto, rifa, campaña y participante.
  * Soporta paginación y filtro por campana.
