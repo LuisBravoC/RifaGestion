@@ -593,7 +593,7 @@ export async function getHistorialGlobal({ campanaId = null, page = 0, pageSize 
   let query = supabase
     .from('historial_pagos_rifa')
     .select(`
-      id, monto, fecha, metodo_pago,
+      id, monto, fecha, created_at, metodo_pago,
       boleto:boletos(
         id, numero_asignado, estatus,
         nombre_participante,
@@ -603,8 +603,7 @@ export async function getHistorialGlobal({ campanaId = null, page = 0, pageSize 
           campana:campanas(id, nombre))
       )
     `, { count: 'exact' })
-    .order('fecha', { ascending: false })
-    .order('id',    { ascending: false })
+    .order('created_at', { ascending: false })
     .range(page * pageSize, (page + 1) * pageSize - 1)
 
   if (campanaId) {

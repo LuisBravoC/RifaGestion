@@ -2,12 +2,13 @@ import { useState, useMemo, useEffect, useRef } from 'react'
 import { Link } from 'react-router-dom'
 import { CreditCard, ChevronLeft, ChevronRight, ArrowRight } from 'lucide-react'
 import { useQuery } from '../lib/useQuery.js'
-import { fmt, fmtDate } from '../lib/formatters.js'
+import { fmt, fmtDate, fmtDateTime } from '../lib/formatters.js'
 import { getHistorialGlobal, getCampanas } from '../lib/rifas-queries.js'
 import Breadcrumbs from '../components/Breadcrumbs.jsx'
 import LoadingSpinner, { ErrorMsg } from '../components/LoadingSpinner.jsx'
 
 const PAGE_SIZE = 50
+
 
 export default function HistorialPagos() {
   const [campanaId, setCampanaId] = useState('')
@@ -80,7 +81,7 @@ export default function HistorialPagos() {
               <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '.875rem' }}>
                 <thead>
                   <tr style={{ background: 'var(--bg-muted, var(--bg))', borderBottom: '1px solid var(--border)' }}>
-                    {['Fecha', 'Participante', 'Rifa', 'Boleto', 'Método', 'Monto'].map(h => (
+                    {['Fecha y hora', 'Participante', 'Rifa', 'Boleto', 'Método', 'Monto'].map(h => (
                       <th key={h} style={{ padding: '.6rem .9rem', textAlign: 'left', fontWeight: 600, fontSize: '.78rem', color: 'var(--text-muted)', whiteSpace: 'nowrap' }}>{h}</th>
                     ))}
                   </tr>
@@ -93,8 +94,8 @@ export default function HistorialPagos() {
                     const nombre = part?.nombre_completo ?? boleto?.nombre_participante ?? '—'
                     return (
                       <tr key={p.id} style={{ borderBottom: '1px solid var(--border)' }}>
-                        <td style={{ padding: '.55rem .9rem', whiteSpace: 'nowrap', color: 'var(--text-muted)' }}>
-                          {fmtDate(p.fecha)}
+                        <td style={{ padding: '.55rem .9rem', whiteSpace: 'nowrap', color: 'var(--text-muted)', fontSize: '.8rem', fontVariantNumeric: 'tabular-nums' }}>
+                          {fmtDateTime(p.created_at)}
                         </td>
                         <td style={{ padding: '.55rem .9rem' }}>
                           {part?.id ? (
@@ -155,7 +156,7 @@ export default function HistorialPagos() {
                       <span className="historial-mobile-monto">{fmt(p.monto)}</span>
                     </div>
                     <div className="historial-mobile-meta">
-                      <span>{fmtDate(p.fecha)}</span>
+                      <span>{fmtDateTime(p.created_at)}</span>
                       {boleto?.numero_asignado != null && <span>#{boleto.numero_asignado}</span>}
                       {p.metodo_pago && <span>{p.metodo_pago}</span>}
                       {rifa && (

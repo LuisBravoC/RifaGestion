@@ -2,7 +2,7 @@ import { useState, useMemo, useEffect, useRef } from 'react'
 import { Link } from 'react-router-dom'
 import { ClipboardList, ChevronLeft, ChevronRight, ArrowRight, X } from 'lucide-react'
 import { useQuery } from '../lib/useQuery.js'
-import { fmt, fmtDate } from '../lib/formatters.js'
+import { fmt, fmtDate, fmtDateTime } from '../lib/formatters.js'
 import { getBitacora, getCampanas, getRifasConResumen, getGrupos } from '../lib/rifas-queries.js'
 import Breadcrumbs from '../components/Breadcrumbs.jsx'
 import LoadingSpinner, { ErrorMsg } from '../components/LoadingSpinner.jsx'
@@ -41,15 +41,6 @@ function EstatusBadge({ value }) {
       {meta.label}
     </span>
   )
-}
-
-function fmtDateTime(iso) {
-  if (!iso) return '—'
-  const d = new Date(iso)
-  return d.toLocaleString('es-MX', {
-    day: '2-digit', month: 'short', year: 'numeric',
-    hour: '2-digit', minute: '2-digit',
-  })
 }
 
 const SELECT_STYLE = {
