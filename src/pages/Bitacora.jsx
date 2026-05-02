@@ -1,6 +1,6 @@
 import { useState, useMemo, useEffect, useRef } from 'react'
 import { Link } from 'react-router-dom'
-import { ClipboardList, ChevronLeft, ChevronRight, ArrowRight, X } from 'lucide-react'
+import { ClipboardList, ChevronLeft, ChevronRight, ArrowRight, X, UserRoundCog } from 'lucide-react'
 import { useQuery } from '../lib/useQuery.js'
 import { fmt, fmtDate, fmtDateTime } from '../lib/formatters.js'
 import { getBitacora, getCampanas, getRifasConResumen, getGrupos } from '../lib/rifas-queries.js'
@@ -39,6 +39,25 @@ function EstatusBadge({ value }) {
       whiteSpace: 'nowrap',
     }}>
       {meta.label}
+    </span>
+  )
+}
+
+function ReasignadoBadge() {
+  return (
+    <span style={{
+      display: 'inline-flex',
+      alignItems: 'center',
+      gap: '.3rem',
+      padding: '.15rem .55rem',
+      borderRadius: '99px',
+      fontSize: '.72rem',
+      fontWeight: 700,
+      color: 'var(--accent-light)',
+      background: 'color-mix(in srgb, var(--accent-light) 12%, transparent)',
+      whiteSpace: 'nowrap',
+    }}>
+      <UserRoundCog size={11} /> Reasignado
     </span>
   )
 }
@@ -269,16 +288,21 @@ export default function Bitacora() {
                           #{m.numero_asignado}
                         </td>
                         <td style={{ padding: '.5rem .5rem .5rem .9rem', textAlign: 'left' }}>
-                          {m.estatus_anterior
-                            ? <EstatusBadge value={m.estatus_anterior} />
-                            : <span style={{ color: 'var(--text-muted)', fontSize: '.75rem' }}>—</span>
+                          {m.tipo_movimiento === 'reasignacion'
+                            ? <span style={{ color: 'var(--text-muted)', fontSize: '.75rem' }}>—</span>
+                            : m.estatus_anterior
+                              ? <EstatusBadge value={m.estatus_anterior} />
+                              : <span style={{ color: 'var(--text-muted)', fontSize: '.75rem' }}>—</span>
                           }
                         </td>
                         <td style={{ padding: '0', textAlign: 'center', width: '1.2rem', color: 'var(--text-muted)' }}>
-                          {m.estatus_anterior && <ArrowRight size={11} />}
+                          {m.tipo_movimiento !== 'reasignacion' && m.estatus_anterior && <ArrowRight size={11} />}
                         </td>
                         <td style={{ padding: '.5rem .9rem .5rem .5rem' }}>
-                          <EstatusBadge value={m.estatus_nuevo} />
+                          {m.tipo_movimiento === 'reasignacion'
+                            ? <ReasignadoBadge />
+                            : <EstatusBadge value={m.estatus_nuevo} />
+                          }
                         </td>
                         <td style={{ padding: '.5rem .9rem' }}>
                           {m.participante_id ? (
@@ -329,13 +353,19 @@ export default function Bitacora() {
                   <div className="historial-mobile-main">
                     <span style={{ fontWeight: 700 }}>#{m.numero_asignado}</span>
                     <span style={{ display: 'inline-flex', alignItems: 'center', gap: '.3rem' }}>
-                      {m.estatus_anterior && (
+                      {m.tipo_movimiento === 'reasignacion' ? (
+                        <ReasignadoBadge />
+                      ) : (
                         <>
-                          <EstatusBadge value={m.estatus_anterior} />
-                          <ArrowRight size={11} style={{ color: 'var(--text-muted)', flexShrink: 0 }} />
+                          {m.estatus_anterior && (
+                            <>
+                              <EstatusBadge value={m.estatus_anterior} />
+                              <ArrowRight size={11} style={{ color: 'var(--text-muted)', flexShrink: 0 }} />
+                            </>
+                          )}
+                          <EstatusBadge value={m.estatus_nuevo} />
                         </>
                       )}
-                      <EstatusBadge value={m.estatus_nuevo} />
                     </span>
                   </div>
                   <div className="historial-mobile-meta">

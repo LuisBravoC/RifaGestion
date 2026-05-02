@@ -344,6 +344,19 @@ export async function revertirApartado(boletoId) {
   )
 }
 
+/**
+ * Reemplaza solo el participante asignado a un boleto, sin tocar pagos ni estatus.
+ */
+export async function reemplazarParticipante(boletoId, participanteId, nombreParticipante) {
+  check(
+    await supabase.from('boletos').update({
+      participante_id:     participanteId,
+      nombre_participante: nombreParticipante ?? null,
+    }).eq('id', boletoId),
+    'reemplazarParticipante'
+  )
+}
+
 export async function liberarBoleto(boletoId) {
   check(
     await supabase.from('boletos').update({
@@ -555,7 +568,7 @@ export async function getBitacora({
     .select(`
       id, created_at,
       boleto_id, rifa_id, campana_id, numero_asignado,
-      estatus_anterior, estatus_nuevo,
+      estatus_anterior, estatus_nuevo, tipo_movimiento,
       nombre_participante, participante_id, grupo_id,
       rifa:rifas(id, nombre_premio),
       campana:campanas(id, nombre),

@@ -2,7 +2,7 @@ import { useState, useCallback, useRef } from 'react'
 import { useNavigate } from 'react-router-dom'
 import {
   Search, Plus, X, CheckCircle2, Trash2,
-  MessageCircle, Zap, Clock, UserPlus, ArrowRight, RotateCcw,
+  MessageCircle, Zap, Clock, UserPlus, ArrowRight, RotateCcw, UserRoundCog,
 } from 'lucide-react'
 import { fmt, fmtNum, fmtDate, today } from '../lib/formatters.js'
 import * as q from '../lib/rifas-queries.js'
@@ -13,6 +13,11 @@ import WhatsAppBtn from './WhatsAppBtn.jsx'
 
 
 // ── Componente ────────────────────────────────────────────────────────────────
+
+function resolveGrupoId(grupoIdSeleccionado, grupos) {
+  if (grupoIdSeleccionado) return grupoIdSeleccionado
+  return (grupos ?? []).find(g => g.nombre.toLowerCase() === 'otros')?.id ?? null
+}
 
 /**
  * Panel lateral para apartar o gestionar un boleto.
@@ -49,6 +54,11 @@ export default function BoletoPanel({ boleto: boletoInicial, rifa, total, isAdmi
   const [showAddPago, setShowAddPago]     = useState(false)
   const [confirmLib, setConfirmLib]       = useState(false)
   const [saving, setSaving]               = useState(false)
+  const [reasigSearch, setReasigSearch]   = useState('')
+  const [reasigResults, setReasigResults] = useState([])
+  const [reasigPart, setReasigPart]       = useState(null)
+  const [showReasigNew, setShowReasigNew] = useState(false)
+  const [reasigNuevo, setReasigNuevo]     = useState({ nombre_completo: '', telefono_whatsapp: '', grupo_id: '' })
 
   const showErr = e => onError(typeof e === 'string' ? { title: 'Aviso', body: e } : (e?.title ? e : parseError(e)))
 
@@ -74,6 +84,39 @@ export default function BoletoPanel({ boleto: boletoInicial, rifa, total, isAdmi
     }, 300)
   }, [])
 
+  // ── Búsqueda de participante para reasignar (debounced) ───────────────────
+  const reasigRef = useRef(null)
+  const handleReasigSearch = useCallback(async (v) => {
+    setReasigSearch(v)
+    clearTimeout(reasigRef.current)
+    if (!v.trim() || v.trim().length < 2) { setReasigResults([]); return }
+    reasigRef.current = setTimeout(async () => {
+      const r = await q.buscarParticipantes(v)
+      setReasigResults(r)
+    }, 300)
+  }, [])
+
+  async function handleReasignar() {
+    if (!reasigPart && !showReasigNew) { showErr('Selecciona o crea un participante.'); return }
+    if (showReasigNew && !reasigNuevo.nombre_completo.trim()) { showErr('El nombre del participante es obligatorio.'); return }
+    setSaving(true)
+    try {
+      let pid = reasigPart?.id
+      let nombre = reasigPart?.nombre_completo
+      if (!pid) {
+        const p = await q.insertParticipante({ ...reasigNuevo, grupo_id: resolveGrupoId(reasigNuevo.grupo_id, grupos) })
+        pid    = p.id
+        nombre = reasigNuevo.nombre_completo
+      }
+      await q.reemplazarParticipante(boleto.id, pid, nombre)
+      setBoleto(await q.getBoleto(boleto.id))
+      toast(`Boleto #${fmtNum(boleto.numero_asignado, total)} reasignado a ${nombre}`)
+      setMode('gestionar')
+      onDone({ noClose: true })
+    } catch (e) { showErr(e) }
+    finally { setSaving(false) }
+  }
+
   // ── Acciones: asignar ─────────────────────────────────────────────────────
   async function handleAsignar() {
     if (!partSeleccionado && !showNewForm) { showErr('Selecciona o crea un participante.'); return }
@@ -84,12 +127,7 @@ export default function BoletoPanel({ boleto: boletoInicial, rifa, total, isAdmi
       let nombre = partSeleccionado?.nombre_completo
       if (!pid) {
         // Si no se escogió grupo, asignar automáticamente "Otros"
-        let grupo_id = nuevoPart.grupo_id || null
-        if (!grupo_id) {
-          const otros = (grupos ?? []).find(g => g.nombre.toLowerCase() === 'otros')
-          grupo_id = otros?.id ?? null
-        }
-        const p = await q.insertParticipante({ ...nuevoPart, grupo_id })
+        const p = await q.insertParticipante({ ...nuevoPart, grupo_id: resolveGrupoId(nuevoPart.grupo_id, grupos) })
         pid    = p.id
         nombre = nuevoPart.nombre_completo
       }
@@ -319,7 +357,7 @@ export default function BoletoPanel({ boleto: boletoInicial, rifa, total, isAdmi
               ) : (
                 !partSeleccionado && (
                   <button
-                    className="btn btn-sm btn-outline"
+                    className="btn btn-outline"
                     style={{ width: '100%', marginBottom: '.75rem' }}
                     onClick={() => { setShowNewForm(true); setPartSearch(''); setPartResults([]) }}
                   >
@@ -465,6 +503,11 @@ export default function BoletoPanel({ boleto: boletoInicial, rifa, total, isAdmi
                       <RotateCcw size={14} /> Reactivar boleto
                     </button>
                   )}
+                  {(estatusEfectivo === 'Apartado' || estatusEfectivo === 'Vencido') && (
+                    <button className="btn btn-outline" onClick={() => setMode('reasignar')} disabled={saving}>
+                      <UserRoundCog size={14} /> Cambiar participante
+                    </button>
+                  )}
                   {!confirmLib ? (
                     <button className="btn btn-outline" style={{ color: 'var(--deuda)', borderColor: 'var(--deuda)' }} onClick={() => setConfirmLib(true)} disabled={saving}>
                       <Zap size={14} /> Liberar boleto
@@ -484,6 +527,104 @@ export default function BoletoPanel({ boleto: boletoInicial, rifa, total, isAdmi
               )}
             </>
           )}
+          {/* ── MODO: REASIGNAR ── */}
+          {mode === 'reasignar' && (
+            <>
+              <p style={{ fontSize: '.85rem', color: 'var(--text-muted)', marginBottom: '.75rem' }}>
+                El boleto mantendrá su estatus y pagos. Solo se cambia el participante asignado.
+              </p>
+              <p className="field-section-label">Nuevo participante</p>
+              {!showReasigNew && (
+                <div className="field" style={{ position: 'relative' }}>
+                  <div style={{ position: 'relative' }}>
+                    <Search size={14} style={{ position: 'absolute', left: '.7rem', top: '50%', transform: 'translateY(-50%)', color: 'var(--text-muted)', pointerEvents: 'none' }} />
+                    <input
+                      value={reasigSearch}
+                      onChange={e => handleReasigSearch(e.target.value)}
+                      placeholder="Buscar por nombre o teléfono"
+                      autoFocus
+                      style={{ paddingLeft: '2.2rem' }}
+                    />
+                  </div>
+                  {reasigResults.length > 0 && (
+                    <div className="search-dropdown" style={{ position: 'static', marginTop: '.25rem', maxHeight: '200px', overflowY: 'auto' }}>
+                      {reasigResults.map(p => (
+                        <button
+                          key={p.id}
+                          className="search-item"
+                          style={{ width: '100%', textAlign: 'left', background: 'none', border: 'none', cursor: 'pointer' }}
+                          onClick={() => { setReasigPart(p); setReasigSearch(p.nombre_completo); setReasigResults([]) }}
+                        >
+                          <span className="search-item-name">{p.nombre_completo}</span>
+                          <span className="search-item-meta">{p.telefono_whatsapp}</span>
+                        </button>
+                      ))}
+                    </div>
+                  )}
+                  {reasigPart && (
+                    <div className="boleto-part-selected">
+                      <span>{reasigPart.nombre_completo}</span>
+                      <button className="btn btn-icon" onClick={() => { setReasigPart(null); setReasigSearch('') }}>
+                        <X size={13} />
+                      </button>
+                    </div>
+                  )}
+                </div>
+              )}
+              {showReasigNew ? (
+                <div>
+                  <div className="field">
+                    <label>Nombre completo *</label>
+                    <input
+                      value={reasigNuevo.nombre_completo}
+                      onChange={e => setReasigNuevo(f => ({ ...f, nombre_completo: e.target.value }))}
+                      placeholder="Nombre del comprador"
+                      autoFocus
+                    />
+                  </div>
+                  <div className="field">
+                    <label>Teléfono WhatsApp</label>
+                    <input
+                      value={reasigNuevo.telefono_whatsapp}
+                      onChange={e => setReasigNuevo(f => ({ ...f, telefono_whatsapp: e.target.value }))}
+                      placeholder="ej. 6671234567"
+                      type="tel"
+                    />
+                  </div>
+                  <div className="field">
+                    <label>Grupo social</label>
+                    <select
+                      value={reasigNuevo.grupo_id}
+                      onChange={e => setReasigNuevo(f => ({ ...f, grupo_id: e.target.value }))}
+                      style={{ background: 'var(--bg)', border: '1px solid var(--border)', borderRadius: 'var(--radius)', padding: '.45rem .75rem', color: 'var(--text)', fontSize: '.875rem', width: '100%' }}
+                    >
+                      <option value="">— Sin grupo (Otros por defecto) —</option>
+                      {(grupos ?? []).map(g => (
+                        <option key={g.id} value={g.id}>{g.nombre}</option>
+                      ))}
+                    </select>
+                  </div>
+                  <button
+                    className="btn btn-sm btn-outline"
+                    style={{ marginBottom: '.75rem' }}
+                    onClick={() => { setShowReasigNew(false); setReasigNuevo({ nombre_completo: '', telefono_whatsapp: '', grupo_id: '' }) }}
+                  >
+                    <X size={13} /> Cancelar
+                  </button>
+                </div>
+              ) : (
+                !reasigPart && (
+                  <button
+                    className="btn btn-outline"
+                    style={{ width: '100%', marginBottom: '.75rem' }}
+                    onClick={() => { setShowReasigNew(true); setReasigSearch(''); setReasigResults([]) }}
+                  >
+                    <UserPlus size={14} /> Nuevo participante
+                  </button>
+                )
+              )}
+            </>
+          )}
         </div>
 
         {/* Pie */}
@@ -493,6 +634,13 @@ export default function BoletoPanel({ boleto: boletoInicial, rifa, total, isAdmi
               <button className="btn btn-outline" onClick={onClose} disabled={saving}>Cancelar</button>
               <button className="btn btn-primary" onClick={handleAsignar} disabled={saving}>
                 {saving ? 'Guardando…' : 'Apartar'}
+              </button>
+            </>
+          ) : mode === 'reasignar' ? (
+            <>
+              <button className="btn btn-outline" onClick={() => setMode('gestionar')} disabled={saving}>Cancelar</button>
+              <button className="btn btn-primary" onClick={handleReasignar} disabled={saving}>
+                {saving ? 'Guardando…' : 'Reasignar'}
               </button>
             </>
           ) : (

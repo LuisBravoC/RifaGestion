@@ -3,6 +3,49 @@
 -- Ejecuta este script en Supabase > SQL Editor > New Query
 -- ═══════════════════════════════════════════════════════════════════════════════
 
+-- 0. PERFILES DE USUARIO — extiende auth.users con nombre y rol
+-- ─────────────────────────────────────────────────────────────
+-- auth.users es gestionada automáticamente por Supabase Auth.
+-- Esta tabla solo agrega los campos extra que la app necesita.
+CREATE TABLE IF NOT EXISTS perfiles (
+  id     uuid PRIMARY KEY REFERENCES auth.users(id) ON DELETE CASCADE,
+  nombre text NOT NULL DEFAULT '',
+  rol    text NOT NULL DEFAULT 'viewer'
+               CHECK (rol IN ('admin', 'viewer'))
+);
+
+-- Crea automáticamente un perfil "viewer" al registrar un nuevo usuario
+-- (descomenta cuando quieras activar el auto-registro de perfiles)
+-- CREATE OR REPLACE FUNCTION fn_crear_perfil()
+-- RETURNS TRIGGER LANGUAGE plpgsql SECURITY DEFINER AS $$
+-- BEGIN
+--   INSERT INTO public.perfiles (id, nombre, rol)
+--   VALUES (
+--     NEW.id,
+--     COALESCE(NEW.raw_user_meta_data->>'full_name', split_part(NEW.email, '@', 1)),
+--     'viewer'
+--   )
+--   ON CONFLICT (id) DO NOTHING;
+--   RETURN NEW;
+-- END;
+-- $$;
+--
+-- DROP TRIGGER IF EXISTS trg_crear_perfil ON auth.users;
+-- CREATE TRIGGER trg_crear_perfil
+--   AFTER INSERT ON auth.users
+--   FOR EACH ROW EXECUTE FUNCTION fn_crear_perfil();
+
+-- RLS: cada usuario solo puede leer y actualizar su propio perfil
+ALTER TABLE perfiles ENABLE ROW LEVEL SECURITY;
+
+CREATE POLICY "perfiles_select_own" ON perfiles
+  FOR SELECT TO authenticated USING (auth.uid() = id);
+
+CREATE POLICY "perfiles_update_own" ON perfiles
+  FOR UPDATE TO authenticated USING (auth.uid() = id) WITH CHECK (auth.uid() = id);
+
+-- ─────────────────────────────────────────────────────────────
+
 -- 1. CAMPAÑAS — agrupa varios sorteos bajo un mismo paraguas
 -- ───────────────────────────────────────────────────────────
 CREATE TABLE IF NOT EXISTS campanas (
@@ -133,6 +176,7 @@ CREATE TABLE IF NOT EXISTS bitacora_boletos (
   nombre_participante text,                       -- snapshot del momento
   participante_id     uuid        REFERENCES participantes(id) ON DELETE SET NULL,
   grupo_id            uuid        REFERENCES grupos(id) ON DELETE SET NULL,
+  tipo_movimiento     text        NOT NULL DEFAULT 'estatus',  -- 'estatus' | 'reasignacion'
   created_at          timestamptz NOT NULL DEFAULT now()
 );
 
@@ -148,10 +192,22 @@ CREATE OR REPLACE FUNCTION fn_bitacora_boletos()
 RETURNS TRIGGER LANGUAGE plpgsql AS $$
 DECLARE
   v_campana_id uuid;
+  v_tipo       text;
 BEGIN
-  -- Solo registrar si cambia el estatus (o es INSERT con asignación a participante)
+  -- Solo registrar si cambia el estatus, o si cambia el participante asignado
   IF (TG_OP = 'INSERT' AND NEW.participante_id IS NOT NULL)
-     OR (TG_OP = 'UPDATE' AND OLD.estatus IS DISTINCT FROM NEW.estatus) THEN
+     OR (TG_OP = 'UPDATE' AND OLD.estatus IS DISTINCT FROM NEW.estatus)
+     OR (TG_OP = 'UPDATE' AND OLD.participante_id IS DISTINCT FROM NEW.participante_id
+         AND NEW.participante_id IS NOT NULL) THEN
+
+    -- Determinar tipo de movimiento
+    IF TG_OP = 'UPDATE'
+       AND OLD.participante_id IS DISTINCT FROM NEW.participante_id
+       AND OLD.estatus = NEW.estatus THEN
+      v_tipo := 'reasignacion';
+    ELSE
+      v_tipo := 'estatus';
+    END IF;
 
     -- Obtener campana_id desde rifas
     SELECT campana_id INTO v_campana_id FROM rifas WHERE id = NEW.rifa_id;
@@ -159,18 +215,21 @@ BEGIN
     INSERT INTO bitacora_boletos (
       boleto_id, rifa_id, campana_id, numero_asignado,
       estatus_anterior, estatus_nuevo,
-      nombre_participante, participante_id, grupo_id
+      nombre_participante, participante_id, grupo_id,
+      tipo_movimiento
     )
     SELECT
       NEW.id,
       NEW.rifa_id,
       v_campana_id,
       NEW.numero_asignado,
-      CASE WHEN TG_OP = 'UPDATE' THEN OLD.estatus ELSE NULL END,
+      -- Para reasignaciones el estatus no cambió; guardamos NULL en estatus_anterior
+      CASE WHEN v_tipo = 'estatus' AND TG_OP = 'UPDATE' THEN OLD.estatus ELSE NULL END,
       NEW.estatus,
       COALESCE(NEW.nombre_participante, p.nombre_completo),
       NEW.participante_id,
-      p.grupo_id
+      p.grupo_id,
+      v_tipo
     FROM (SELECT NULL::uuid AS grupo_id, NULL::text AS nombre_completo) AS _default
     LEFT JOIN participantes p ON p.id = NEW.participante_id;
   END IF;
