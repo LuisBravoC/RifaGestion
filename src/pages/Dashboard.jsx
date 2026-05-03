@@ -1,6 +1,6 @@
 import { Link } from 'react-router-dom'
 import { Ticket, ArrowRight, Activity, TrendingUp, Target, CreditCard, CalendarDays, Users, PieChart as PieIcon, Trophy } from 'lucide-react'
-import { useState, useMemo } from 'react'
+import { useState, useMemo, useEffect } from 'react'
 import { useQuery } from '../lib/useQuery.js'
 import { getCampanasConResumen, getRecaudacionPorDia, getRecaudacionVsMeta, getRecaudacionPorMetodoPago, getApartadosPorDia, getNuevosParticipantesPorDia, getBoletosPorGrupo, getTop5ParticipantesPorBoletos } from '../lib/rifas-queries.js'
 import { fmt } from '../lib/formatters.js'
@@ -156,17 +156,17 @@ export default function Dashboard() {
             { id: 'metodos', title: 'Recaudación por método de pago', chart: <ChartRecaudacionPorMetodo data={recaudacionPorMetodoQ.data} loading={recaudacionPorMetodoQ.loading} error={recaudacionPorMetodoQ.error} height={240} /> },
             { id: 'grupos',  title: 'Distribución por grupo social', chart: <ChartGrupoSocial data={grupoSocialQ.data} loading={grupoSocialQ.loading} error={grupoSocialQ.error} height={260} /> },
             { id: 'top5',    title: 'Top 5 participantes por boletos', chart: <ChartTop5Participantes data={top5Q.data} loading={top5Q.loading} error={top5Q.error} height={220} /> },
-          ].filter(s => openCharts.has(s.id))
+          ]
 
-          if (sections.length === 0) return null
-
-          return sections.map((s, i) => (
-            <div key={s.id}>
-              {i > 0 && <div style={{ borderTop: '1px solid var(--border)', margin: '1.25rem 0' }} />}
-              <p style={{ fontSize: '.78rem', fontWeight: '600', textTransform: 'uppercase', letterSpacing: '.05em', color: 'var(--text-muted)', marginBottom: '.6rem' }}>{s.title}</p>
-              {s.chart}
-            </div>
-          ))
+          return sections.map((s, i) => {
+            const isOpen = openCharts.has(s.id)
+            const anyPrevOpen = sections.slice(0, i).some(x => openCharts.has(x.id))
+            return (
+              <ChartSection key={s.id} isOpen={isOpen} title={s.title} showDivider={anyPrevOpen}>
+                {s.chart}
+              </ChartSection>
+            )
+          })
         })()}
       </div>
 
@@ -175,6 +175,30 @@ export default function Dashboard() {
         {campanas.map(c => (
           <CampanaCard key={c.id} campana={c} />
         ))}
+      </div>
+    </div>
+  )
+}
+
+function ChartSection({ isOpen, title, showDivider, children }) {
+  const [mounted, setMounted] = useState(false)
+
+  useEffect(() => {
+    if (isOpen) {
+      setMounted(true)
+    } else {
+      const t = setTimeout(() => setMounted(false), 320)
+      return () => clearTimeout(t)
+    }
+  }, [isOpen])
+
+  return (
+    <div className={`chart-collapse${isOpen ? ' open' : ''}`}>
+      <div className="chart-collapse-inner">
+        {showDivider && <div style={{ borderTop: '1px solid var(--border)', margin: '1.25rem 0' }} />}
+        <p style={{ fontSize: '.78rem', fontWeight: '600', textTransform: 'uppercase', letterSpacing: '.05em', color: 'var(--text-muted)', marginBottom: '.6rem' }}>{title}</p>
+        {mounted && children}
+        <div style={{ height: '4px' }} />
       </div>
     </div>
   )

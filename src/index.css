@@ -7,6 +7,21 @@
 .recharts-wrapper *:focus { outline: none !important; }
 .recharts-layer { user-select: none; }
 
+/* ── Chart collapse animation (grid-template-rows trick) ─────────────────── */
+.chart-collapse {
+  display: grid;
+  grid-template-rows: 0fr;
+  opacity: 0;
+  transition: grid-template-rows .3s cubic-bezier(.4,0,.2,1), opacity .22s ease;
+}
+.chart-collapse.open {
+  grid-template-rows: 1fr;
+  opacity: 1;
+}
+.chart-collapse > .chart-collapse-inner {
+  overflow: hidden;
+}
+
 :root {
   --bg:           #0f172a;
   --bg-card:      #1e293b;
