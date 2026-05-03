@@ -883,14 +883,15 @@ export async function importarBoletos(rifaId, filas, precioBoleto) {
  * Recaudación por mes (últimos 6 meses).
  * Para gráfica: LineChart con fechas y montos.
  */
-export async function getRecaudacionPorDia() {
-  const hace30Dias = new Date()
-  hace30Dias.setDate(hace30Dias.getDate() - 30)
+export async function getRecaudacionPorDia({ desde, hasta } = {}) {
+  const inicio = desde ?? (() => { const d = new Date(); d.setDate(d.getDate() - 29); return d })();
+  const fin    = hasta ?? new Date()
 
   const { data, error } = await supabase
     .from('historial_pagos_rifa')
     .select('created_at, monto')
-    .gte('created_at', hace30Dias.toISOString())
+    .gte('created_at', inicio instanceof Date ? inicio.toISOString() : inicio)
+    .lte('created_at', fin instanceof Date ? fin.toISOString() : fin)
   check({ data, error }, 'getRecaudacionPorDia')
 
   const resumen = {}
@@ -900,11 +901,11 @@ export async function getRecaudacionPorDia() {
   }
 
   const result = []
-  for (let i = 29; i >= 0; i--) {
-    const d = new Date()
-    d.setDate(d.getDate() - i)
-    const key = d.toLocaleDateString('es-MX', { day: '2-digit', month: 'short' })
+  const cur = new Date(inicio)
+  while (cur <= fin) {
+    const key = cur.toLocaleDateString('es-MX', { day: '2-digit', month: 'short' })
     result.push({ dia: key, recaudado: resumen[key] ?? 0 })
+    cur.setDate(cur.getDate() + 1)
   }
   return result
 }
@@ -913,15 +914,16 @@ export async function getRecaudacionPorDia() {
  * Boletos apartados por día (últimos 30 días).
  * Fuente: bitacora_boletos donde estatus_nuevo = 'Apartado'.
  */
-export async function getApartadosPorDia() {
-  const hace30Dias = new Date()
-  hace30Dias.setDate(hace30Dias.getDate() - 30)
+export async function getApartadosPorDia({ desde, hasta } = {}) {
+  const inicio = desde ?? (() => { const d = new Date(); d.setDate(d.getDate() - 29); return d })()
+  const fin    = hasta ?? new Date()
 
   const { data, error } = await supabase
     .from('bitacora_boletos')
     .select('created_at')
     .eq('estatus_nuevo', 'Apartado')
-    .gte('created_at', hace30Dias.toISOString())
+    .gte('created_at', inicio instanceof Date ? inicio.toISOString() : inicio)
+    .lte('created_at', fin instanceof Date ? fin.toISOString() : fin)
   check({ data, error }, 'getApartadosPorDia')
 
   const resumen = {}
@@ -931,11 +933,11 @@ export async function getApartadosPorDia() {
   }
 
   const result = []
-  for (let i = 29; i >= 0; i--) {
-    const d = new Date()
-    d.setDate(d.getDate() - i)
-    const key = d.toLocaleDateString('es-MX', { day: '2-digit', month: 'short' })
+  const cur = new Date(inicio)
+  while (cur <= fin) {
+    const key = cur.toLocaleDateString('es-MX', { day: '2-digit', month: 'short' })
     result.push({ dia: key, apartados: resumen[key] ?? 0 })
+    cur.setDate(cur.getDate() + 1)
   }
   return result
 }
@@ -944,14 +946,15 @@ export async function getApartadosPorDia() {
  * Nuevos participantes por día (últimos 30 días).
  * Para gráfica: BarChart de adquisición.
  */
-export async function getNuevosParticipantesPorDia() {
-  const hace30Dias = new Date()
-  hace30Dias.setDate(hace30Dias.getDate() - 30)
+export async function getNuevosParticipantesPorDia({ desde, hasta } = {}) {
+  const inicio = desde ?? (() => { const d = new Date(); d.setDate(d.getDate() - 29); return d })()
+  const fin    = hasta ?? new Date()
 
   const { data, error } = await supabase
     .from('participantes')
     .select('created_at')
-    .gte('created_at', hace30Dias.toISOString())
+    .gte('created_at', inicio instanceof Date ? inicio.toISOString() : inicio)
+    .lte('created_at', fin instanceof Date ? fin.toISOString() : fin)
   check({ data, error }, 'getNuevosParticipantesPorDia')
 
   const resumen = {}
@@ -961,11 +964,11 @@ export async function getNuevosParticipantesPorDia() {
   }
 
   const result = []
-  for (let i = 29; i >= 0; i--) {
-    const d = new Date()
-    d.setDate(d.getDate() - i)
-    const key = d.toLocaleDateString('es-MX', { day: '2-digit', month: 'short' })
+  const cur = new Date(inicio)
+  while (cur <= fin) {
+    const key = cur.toLocaleDateString('es-MX', { day: '2-digit', month: 'short' })
     result.push({ dia: key, participantes: resumen[key] ?? 0 })
+    cur.setDate(cur.getDate() + 1)
   }
   return result
 }

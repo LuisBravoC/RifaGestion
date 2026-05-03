@@ -8,15 +8,16 @@ export default function ChartApartadosPorDia({ data, loading, error, height = 30
   return (
     <div style={{ width: '100%', height }}>
       <ResponsiveContainer>
-        <BarChart data={data}>
-          <CartesianGrid stroke="var(--border)" strokeDasharray="5 5" />
-          <XAxis dataKey="dia" stroke="var(--text-muted)" tick={{ fontSize: 11 }} interval="preserveStartEnd" />
-          <YAxis stroke="var(--text-muted)" tick={{ fontSize: 11 }} allowDecimals={false} />
+        <BarChart data={data} margin={{ top: 4, right: 16, left: 0, bottom: 0 }}>
+          <CartesianGrid stroke="var(--border)" strokeDasharray="4 4" vertical={false} />
+          <XAxis dataKey="dia" stroke="var(--text-muted)" tick={{ fontSize: 11 }} interval="preserveStartEnd" axisLine={false} tickLine={false} />
+          <YAxis stroke="var(--text-muted)" tick={{ fontSize: 11 }} allowDecimals={false} axisLine={false} tickLine={false} />
           <Tooltip
-            contentStyle={{ background: 'var(--bg)', border: '1px solid var(--border)' }}
+            contentStyle={{ background: 'var(--bg-secondary)', border: '1px solid var(--border)', borderRadius: '.5rem', fontSize: '.82rem' }}
             formatter={(value) => [`${value} boletos`, 'Apartados']}
+            cursor={{ fill: 'transparent' }}
           />
-          <Bar dataKey="apartados" fill="var(--abonado)" name="Apartados" radius={[3, 3, 0, 0]} />
+          <Bar dataKey="apartados" fill="var(--abonado)" name="Apartados" radius={[3, 3, 0, 0]} activeBar={{ fill: 'var(--abonado)', opacity: 0.75 }} />
         </BarChart>
       </ResponsiveContainer>
     </div>

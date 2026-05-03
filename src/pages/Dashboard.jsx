@@ -1,6 +1,6 @@
 import { Link } from 'react-router-dom'
-import { Ticket, ArrowRight, Activity, LayoutDashboard, TrendingUp, Target, CreditCard, CalendarDays, Users } from 'lucide-react'
-import { useState } from 'react'
+import { Ticket, ArrowRight, Activity, TrendingUp, Target, CreditCard, CalendarDays, Users } from 'lucide-react'
+import { useState, useMemo } from 'react'
 import { useQuery } from '../lib/useQuery.js'
 import { getCampanasConResumen, getRecaudacionPorDia, getRecaudacionVsMeta, getRecaudacionPorMetodoPago, getApartadosPorDia, getNuevosParticipantesPorDia } from '../lib/rifas-queries.js'
 import { fmt } from '../lib/formatters.js'
@@ -12,13 +12,62 @@ import ChartRecaudacionPorMetodo from '../components/ChartRecaudacionPorMetodo.j
 import ChartApartadosPorDia from '../components/ChartApartadosPorDia.jsx'
 import ChartNuevosParticipantes from '../components/ChartNuevosParticipantes.jsx'
 
+const PERIODOS = [
+  { id: '7d',  label: '7 días' },
+  { id: 'sem', label: 'Esta semana' },
+  { id: '30d', label: '30 días' },
+  { id: 'mes', label: 'Este mes' },
+  { id: '90d', label: '90 días' },
+]
+
+function getRange(periodoId) {
+  const hoy = new Date()
+  const hasta = new Date(hoy); hasta.setHours(23, 59, 59, 999)
+  let desde = new Date(hoy)
+  if (periodoId === '7d') { desde.setDate(hoy.getDate() - 6) }
+  else if (periodoId === 'sem') { const dow = hoy.getDay(); desde.setDate(hoy.getDate() - (dow === 0 ? 6 : dow - 1)) }
+  else if (periodoId === '30d') { desde.setDate(hoy.getDate() - 29) }
+  else if (periodoId === 'mes') { desde = new Date(hoy.getFullYear(), hoy.getMonth(), 1) }
+  else if (periodoId === '90d') { desde.setDate(hoy.getDate() - 89) }
+  desde.setHours(0, 0, 0, 0)
+  return { desde, hasta }
+}
+
+function PeriodoSelector({ value, onChange }) {
+  return (
+    <div style={{ display: 'flex', gap: '.3rem', flexWrap: 'wrap' }}>
+      {PERIODOS.map(p => (
+        <button key={p.id} onClick={() => onChange(p.id)} style={{
+          padding: '.3rem .65rem', borderRadius: '.4rem', border: 'none', cursor: 'pointer',
+          background: value === p.id ? 'var(--accent-light)' : 'var(--bg-secondary)',
+          color: value === p.id ? 'var(--bg)' : 'var(--text-muted)',
+          fontSize: '.78rem', fontWeight: value === p.id ? '600' : '400',
+          transition: 'all .15s',
+        }}>{p.label}</button>
+      ))}
+    </div>
+  )
+}
+
 export default function Dashboard() {
-  const [chartMode, setChartMode] = useState('todas')
+  const [periodo, setPeriodo] = useState('30d')
+  const [openCharts, setOpenCharts] = useState(new Set())
+  const range = useMemo(() => getRange(periodo), [periodo])
+
+  function toggleChart(id) {
+    setOpenCharts(prev => {
+      const next = new Set(prev)
+      if (next.has(id)) next.delete(id)
+      else next.add(id)
+      return next
+    })
+  }
+
   const campanasQ = useQuery(() => getCampanasConResumen(), [])
-  const recaudacionDiaQ = useQuery(() => getRecaudacionPorDia(), [])
+  const recaudacionDiaQ = useQuery(() => getRecaudacionPorDia(range), [range])
   const recaudacionPorMetodoQ = useQuery(() => getRecaudacionPorMetodoPago(), [])
-  const apartadosDiaQ = useQuery(() => getApartadosPorDia(), [])
-  const participantesDiaQ = useQuery(() => getNuevosParticipantesPorDia(), [])
+  const apartadosDiaQ = useQuery(() => getApartadosPorDia(range), [range])
+  const participantesDiaQ = useQuery(() => getNuevosParticipantesPorDia(range), [range])
 
   const primeraCampanaId = campanasQ.data?.[0]?.id
   const recaudacionVsMetaQ = useQuery(
@@ -61,113 +110,57 @@ export default function Dashboard() {
 
       <ProgressBar value={totalRecaudado} max={totalMeta} />
 
-      {/* Selector de Gráficas */}
-      {(() => {
-        const TABS = [
-          { id: 'todas',       label: 'Todas',         Icon: LayoutDashboard },
-          { id: 'recaudacion', label: 'Recaudación',   Icon: TrendingUp },
-          { id: 'actividad',   label: 'Actividad',     Icon: CalendarDays },
-          { id: 'metas',       label: 'Metas',         Icon: Target },
-          { id: 'metodos',     label: 'Métodos',       Icon: CreditCard },
-          { id: 'participantes', label: 'Participantes', Icon: Users },
-        ]
-        return (
-          <div style={{ marginTop: '2rem', marginBottom: '1rem', display: 'flex', gap: '.4rem', flexWrap: 'wrap' }}>
-            {TABS.map(({ id, label, Icon }) => (
-              <button
-                key={id}
-                onClick={() => setChartMode(id)}
-                style={{
-                  padding: '.45rem .9rem',
-                  borderRadius: '.5rem',
-                  border: 'none',
-                  cursor: 'pointer',
-                  display: 'flex',
-                  alignItems: 'center',
-                  gap: '.35rem',
-                  background: chartMode === id ? 'var(--accent-light)' : 'var(--bg-secondary)',
-                  color: chartMode === id ? 'var(--bg)' : 'var(--text)',
-                  fontSize: '.83rem',
-                  fontWeight: chartMode === id ? '600' : '500',
-                  transition: 'all .15s ease',
-                }}
-              >
-                <Icon size={13} />{label}
-              </button>
-            ))}
+      {/* Gráficas — tabs que togglean secciones en un solo card */}
+      <div className="card" style={{ marginTop: '2rem', marginBottom: '2rem', padding: '1rem 1.25rem' }}>
+        {/* Fila de controles: tabs + período */}
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: '.75rem', marginBottom: openCharts.size > 0 ? '1rem' : 0 }}>
+          <div style={{ display: 'flex', gap: '.35rem', flexWrap: 'wrap' }}>
+            {[
+              { id: 'recaudacion', label: 'Recaudación',  Icon: TrendingUp },
+              { id: 'apartados',   label: 'Apartados',    Icon: CalendarDays },
+              { id: 'participantes', label: 'Participantes', Icon: Users },
+              { id: 'metas',       label: 'Metas',        Icon: Target },
+              { id: 'metodos',     label: 'Métodos',      Icon: CreditCard },
+            ].map(({ id, label, Icon }) => {
+              const active = openCharts.has(id)
+              return (
+                <button key={id} onClick={() => toggleChart(id)} style={{
+                  padding: '.4rem .85rem', borderRadius: '.45rem', border: 'none', cursor: 'pointer',
+                  display: 'flex', alignItems: 'center', gap: '.35rem',
+                  background: active ? 'var(--accent-light)' : 'var(--bg-secondary)',
+                  color: active ? 'var(--bg)' : 'var(--text)',
+                  fontSize: '.82rem', fontWeight: active ? '600' : '500',
+                  transition: 'all .15s',
+                }}>
+                  <Icon size={12} />{label}
+                </button>
+              )
+            })}
           </div>
-        )
-      })()}
+          {openCharts.size > 0 && <PeriodoSelector value={periodo} onChange={setPeriodo} />}
+        </div>
 
-      {/* Todas las gráficas en modo compacto 2×3 */}
-      {chartMode === 'todas' && (
-        <div className="card" style={{ padding: '1.25rem 1.5rem', marginBottom: '2rem' }}>
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))', gap: '1.25rem 1.75rem' }}>
-            <div>
-              <p style={{ fontSize: '.75rem', fontWeight: '600', textTransform: 'uppercase', letterSpacing: '.04em', color: 'var(--text-muted)', margin: '0 0 .4rem' }}>Recaudación por día</p>
-              <ChartRecaudacionMes data={recaudacionDiaQ.data} loading={recaudacionDiaQ.loading} error={recaudacionDiaQ.error} height={200} xKey="dia" />
+        {/* Secciones colapsadas/expandidas */}
+        {(() => {
+          const sections = [
+            { id: 'recaudacion', title: 'Recaudación por día', chart: <ChartRecaudacionMes data={recaudacionDiaQ.data} loading={recaudacionDiaQ.loading} error={recaudacionDiaQ.error} height={240} xKey="dia" /> },
+            { id: 'apartados',   title: 'Boletos apartados por día', chart: <ChartApartadosPorDia data={apartadosDiaQ.data} loading={apartadosDiaQ.loading} error={apartadosDiaQ.error} height={240} /> },
+            { id: 'participantes', title: 'Nuevos participantes por día', chart: <ChartNuevosParticipantes data={participantesDiaQ.data} loading={participantesDiaQ.loading} error={participantesDiaQ.error} height={240} /> },
+            ...(primeraCampanaId ? [{ id: 'metas', title: 'Recaudado vs Meta', chart: <ChartRecaudacionVsMeta data={recaudacionVsMetaQ.data} loading={recaudacionVsMetaQ.loading} error={recaudacionVsMetaQ.error} height={240} /> }] : []),
+            { id: 'metodos', title: 'Recaudación por método de pago', chart: <ChartRecaudacionPorMetodo data={recaudacionPorMetodoQ.data} loading={recaudacionPorMetodoQ.loading} error={recaudacionPorMetodoQ.error} height={240} /> },
+          ].filter(s => openCharts.has(s.id))
+
+          if (sections.length === 0) return null
+
+          return sections.map((s, i) => (
+            <div key={s.id}>
+              {i > 0 && <div style={{ borderTop: '1px solid var(--border)', margin: '1.25rem 0' }} />}
+              <p style={{ fontSize: '.78rem', fontWeight: '600', textTransform: 'uppercase', letterSpacing: '.05em', color: 'var(--text-muted)', marginBottom: '.6rem' }}>{s.title}</p>
+              {s.chart}
             </div>
-            <div>
-              <p style={{ fontSize: '.75rem', fontWeight: '600', textTransform: 'uppercase', letterSpacing: '.04em', color: 'var(--text-muted)', margin: '0 0 .4rem' }}>Apartados por día</p>
-              <ChartApartadosPorDia data={apartadosDiaQ.data} loading={apartadosDiaQ.loading} error={apartadosDiaQ.error} height={200} />
-            </div>
-            <div>
-              <p style={{ fontSize: '.75rem', fontWeight: '600', textTransform: 'uppercase', letterSpacing: '.04em', color: 'var(--text-muted)', margin: '0 0 .4rem' }}>Nuevos participantes / día</p>
-              <ChartNuevosParticipantes data={participantesDiaQ.data} loading={participantesDiaQ.loading} error={participantesDiaQ.error} height={200} />
-            </div>
-            {primeraCampanaId && (
-              <div>
-                <p style={{ fontSize: '.75rem', fontWeight: '600', textTransform: 'uppercase', letterSpacing: '.04em', color: 'var(--text-muted)', margin: '0 0 .4rem' }}>Recaudado vs Meta</p>
-                <ChartRecaudacionVsMeta data={recaudacionVsMetaQ.data} loading={recaudacionVsMetaQ.loading} error={recaudacionVsMetaQ.error} height={200} />
-              </div>
-            )}
-            <div>
-              <p style={{ fontSize: '.75rem', fontWeight: '600', textTransform: 'uppercase', letterSpacing: '.04em', color: 'var(--text-muted)', margin: '0 0 .4rem' }}>Métodos de pago (30d)</p>
-              <ChartRecaudacionPorMetodo data={recaudacionPorMetodoQ.data} loading={recaudacionPorMetodoQ.loading} error={recaudacionPorMetodoQ.error} height={200} />
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* Recaudación por día */}
-      {chartMode === 'recaudacion' && (
-        <div className="card" style={{ padding: '1.5rem', marginBottom: '2rem' }}>
-          <p className="section-heading" style={{ marginTop: 0 }}>Recaudación por día (30d)</p>
-          <ChartRecaudacionMes data={recaudacionDiaQ.data} loading={recaudacionDiaQ.loading} error={recaudacionDiaQ.error} height={280} xKey="dia" />
-        </div>
-      )}
-
-      {/* Actividad: apartados por día */}
-      {chartMode === 'actividad' && (
-        <div className="card" style={{ padding: '1.5rem', marginBottom: '2rem' }}>
-          <p className="section-heading" style={{ marginTop: 0 }}>Boletos apartados por día (30d)</p>
-          <ChartApartadosPorDia data={apartadosDiaQ.data} loading={apartadosDiaQ.loading} error={apartadosDiaQ.error} height={280} />
-        </div>
-      )}
-
-      {/* Metas */}
-      {chartMode === 'metas' && primeraCampanaId && (
-        <div className="card" style={{ padding: '1.5rem', marginBottom: '2rem' }}>
-          <p className="section-heading" style={{ marginTop: 0 }}>Recaudado vs Meta</p>
-          <ChartRecaudacionVsMeta data={recaudacionVsMetaQ.data} loading={recaudacionVsMetaQ.loading} error={recaudacionVsMetaQ.error} height={280} />
-        </div>
-      )}
-
-      {/* Métodos */}
-      {chartMode === 'metodos' && (
-        <div className="card" style={{ padding: '1.5rem', marginBottom: '2rem' }}>
-          <p className="section-heading" style={{ marginTop: 0 }}>Recaudación por método de pago (30d)</p>
-          <ChartRecaudacionPorMetodo data={recaudacionPorMetodoQ.data} loading={recaudacionPorMetodoQ.loading} error={recaudacionPorMetodoQ.error} height={280} />
-        </div>
-      )}
-
-      {/* Participantes (propuesta) */}
-      {chartMode === 'participantes' && (
-        <div className="card" style={{ padding: '1.5rem', marginBottom: '2rem' }}>
-          <p className="section-heading" style={{ marginTop: 0 }}>Nuevos participantes por día (30d)</p>
-          <ChartNuevosParticipantes data={participantesDiaQ.data} loading={participantesDiaQ.loading} error={participantesDiaQ.error} height={280} />
-        </div>
-      )}
+          ))
+        })()}
+      </div>
 
       <p className="section-heading">Campañas</p>
       <div className="grid grid-auto">

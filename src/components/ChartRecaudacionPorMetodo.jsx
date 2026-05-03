@@ -8,16 +8,16 @@ export default function ChartRecaudacionPorMetodo({ data, loading, error, height
   return (
     <div style={{ width: '100%', height }}>
       <ResponsiveContainer>
-        <BarChart data={data} layout="vertical">
-          <CartesianGrid stroke="var(--border)" strokeDasharray="5 5" />
-          <XAxis type="number" stroke="var(--text-muted)" />
-          <YAxis dataKey="name" type="category" stroke="var(--text-muted)" width={120} />
-          <Tooltip 
-            contentStyle={{ background: 'var(--bg)', border: '1px solid var(--border)' }}
-            formatter={(value) => `$${Number(value).toLocaleString('es-MX')}`}
+        <BarChart data={data} layout="vertical" margin={{ top: 4, right: 16, left: 0, bottom: 0 }}>
+          <CartesianGrid stroke="var(--border)" strokeDasharray="4 4" horizontal={false} />
+          <XAxis type="number" stroke="var(--text-muted)" tick={{ fontSize: 11 }} axisLine={false} tickLine={false} />
+          <YAxis dataKey="name" type="category" stroke="var(--text-muted)" tick={{ fontSize: 11 }} width={120} axisLine={false} tickLine={false} />
+          <Tooltip
+            contentStyle={{ background: 'var(--bg-secondary)', border: '1px solid var(--border)', borderRadius: '.5rem', fontSize: '.82rem' }}
+            formatter={(value) => [`$${Number(value).toLocaleString('es-MX')}`, 'Monto']}
+            cursor={{ fill: 'transparent' }}
           />
-          <Legend />
-          <Bar dataKey="value" fill="var(--accent-light)" name="Monto" />
+          <Bar dataKey="value" fill="var(--accent-light)" name="Monto" radius={[0, 3, 3, 0]} activeBar={{ fill: 'var(--accent-light)', opacity: 0.75 }} />
         </BarChart>
       </ResponsiveContainer>
     </div>
