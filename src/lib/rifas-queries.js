@@ -874,3 +874,141 @@ export async function importarBoletos(rifaId, filas, precioBoleto) {
 
   return { importados, saltados }
 }
+
+// =============================================================================
+// GRÁFICAS / REPORTES
+// =============================================================================
+
+/**
+ * Recaudación por mes (últimos 6 meses).
+ * Para gráfica: LineChart con fechas y montos.
+ */
+export async function getRecaudacionPorMes() {
+  const hace6Meses = new Date()
+  hace6Meses.setMonth(hace6Meses.getMonth() - 6)
+  const fechaLimite = hace6Meses.toISOString()
+
+  const { data, error } = await supabase
+    .from('historial_pagos_rifa')
+    .select('created_at, monto')
+    .gte('created_at', fechaLimite)
+  check({ data, error }, 'getRecaudacionPorMes')
+
+  const resumenPorMes = {}
+  for (const p of data) {
+    const fecha = new Date(p.created_at)
+    const mesAño = fecha.toLocaleString('es-MX', { month: 'short', year: 'numeric' })
+    resumenPorMes[mesAño] = (resumenPorMes[mesAño] ?? 0) + Number(p.monto)
+  }
+  
+  return Object.entries(resumenPorMes).map(([mes, monto]) => ({
+    mes,
+    recaudado: monto,
+  }))
+}
+
+/**
+ * Boletos por estatus en una rifa.
+ * Para gráfica: PieChart.
+ */
+export async function getBoletosPorEstatus(rifaId) {
+  const { data, error } = await supabase
+    .from('boletos')
+    .select('estatus')
+    .eq('rifa_id', rifaId)
+  check({ data, error }, 'getBoletosPorEstatus')
+  
+  const resumen = {}
+  for (const b of data ?? []) {
+    resumen[b.estatus] = (resumen[b.estatus] ?? 0) + 1
+  }
+  return Object.entries(resumen).map(([estatus, count]) => ({
+    name: estatus,
+    value: count,
+  }))
+}
+
+/**
+ * Boletos por estatus en TODAS las rifas de una campaña.
+ * Para gráfica: PieChart agregado.
+ */
+export async function getBoletosPorEstatusCampana(campanaId) {
+  // Primero obtenemos los IDs de todas las rifas de la campaña
+  const { data: rifas, error: rifasError } = await supabase
+    .from('rifas')
+    .select('id')
+    .eq('campana_id', campanaId)
+  check({ data: rifas, error: rifasError }, 'getBoletosPorEstatusCampana - get rifas')
+  
+  if (!rifas || rifas.length === 0) return []
+  
+  const rifaIds = rifas.map(r => r.id)
+  
+  // Luego obtenemos todos los boletos de esas rifas
+  const { data, error } = await supabase
+    .from('boletos')
+    .select('estatus')
+    .in('rifa_id', rifaIds)
+  check({ data, error }, 'getBoletosPorEstatusCampana')
+  
+  const resumen = {}
+  for (const b of data ?? []) {
+    resumen[b.estatus] = (resumen[b.estatus] ?? 0) + 1
+  }
+  return Object.entries(resumen).map(([estatus, count]) => ({
+    name: estatus,
+    value: count,
+  }))
+}
+
+/**
+ * Recaudación vs Meta para cada rifa de una campaña.
+ * Para gráfica: BarChart comparativo.
+ */
+export async function getRecaudacionVsMeta(campanaId) {
+  const { data, error } = await supabase
+    .from('rifas')
+    .select(`
+      id, nombre_premio, precio_boleto, cantidad_boletos,
+      boletos(
+        id,
+        historial_pagos_rifa(monto)
+      )
+    `)
+    .eq('campana_id', campanaId)
+  check({ data, error }, 'getRecaudacionVsMeta')
+
+  return (data ?? []).map(r => ({
+    nombre: r.nombre_premio.substring(0, 12),
+    meta: Number(r.precio_boleto) * r.cantidad_boletos,
+    recaudado: (r.boletos ?? []).reduce((s, b) => {
+      return s + (b.historial_pagos_rifa ?? []).reduce((ps, p) => ps + Number(p.monto), 0)
+    }, 0),
+  }))
+}
+
+/**
+ * Recaudación por método de pago (últimos 30 días).
+ * Para gráfica: BarChart o PieChart.
+ */
+export async function getRecaudacionPorMetodoPago() {
+  const hace30Dias = new Date()
+  hace30Dias.setDate(hace30Dias.getDate() - 30)
+  const fechaLimite = hace30Dias.toISOString()
+
+  const { data, error } = await supabase
+    .from('historial_pagos_rifa')
+    .select('metodo_pago, monto')
+    .gte('created_at', fechaLimite)
+  check({ data, error }, 'getRecaudacionPorMetodoPago')
+
+  const resumen = {}
+  for (const p of data) {
+    const metodo = p.metodo_pago || 'Sin especificar'
+    resumen[metodo] = (resumen[metodo] ?? 0) + Number(p.monto)
+  }
+  return Object.entries(resumen).map(([metodo, monto]) => ({
+    name: metodo,
+    value: monto,
+  }))
+}

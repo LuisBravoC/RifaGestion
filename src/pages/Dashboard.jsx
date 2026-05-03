@@ -1,13 +1,26 @@
 import { Link } from 'react-router-dom'
 import { Ticket, ArrowRight, Activity } from 'lucide-react'
 import { useQuery } from '../lib/useQuery.js'
-import { getCampanasConResumen } from '../lib/rifas-queries.js'
+import { getCampanasConResumen, getRecaudacionPorMes, getRecaudacionVsMeta, getRecaudacionPorMetodoPago } from '../lib/rifas-queries.js'
 import { fmt } from '../lib/formatters.js'
 import ProgressBar from '../components/ProgressBar.jsx'
 import LoadingSpinner, { ErrorMsg } from '../components/LoadingSpinner.jsx'
+import ChartRecaudacionMes from '../components/ChartRecaudacionMes.jsx'
+import ChartRecaudacionVsMeta from '../components/ChartRecaudacionVsMeta.jsx'
+import ChartRecaudacionPorMetodo from '../components/ChartRecaudacionPorMetodo.jsx'
 
 export default function Dashboard() {
   const campanasQ = useQuery(() => getCampanasConResumen(), [])
+  const recaudacionMesQ = useQuery(() => getRecaudacionPorMes(), [])
+  const recaudacionPorMetodoQ = useQuery(() => getRecaudacionPorMetodoPago(), [])
+
+  // Para gráfica vs Meta, necesitamos seleccionar una campaña o mostrar todas
+  // Por ahora mostraremos la primera campaña activa
+  const primeraCampanaId = campanasQ.data?.[0]?.id
+  const recaudacionVsMetaQ = useQuery(
+    () => primeraCampanaId ? getRecaudacionVsMeta(primeraCampanaId) : Promise.resolve([]),
+    [primeraCampanaId]
+  )
 
   if (campanasQ.loading) return <LoadingSpinner text="Cargando dashboard…" />
   if (campanasQ.error)   return <ErrorMsg message={campanasQ.error} />
@@ -43,6 +56,42 @@ export default function Dashboard() {
       </div>
 
       <ProgressBar value={totalRecaudado} max={totalMeta} />
+
+      {/* Gráficas */}
+      <div style={{ marginTop: '2rem', marginBottom: '2rem' }}>
+        <p className="section-heading">Recaudación por Mes</p>
+        <div className="card" style={{ padding: '1.5rem' }}>
+          <ChartRecaudacionMes 
+            data={recaudacionMesQ.data} 
+            loading={recaudacionMesQ.loading} 
+            error={recaudacionMesQ.error} 
+          />
+        </div>
+      </div>
+
+      {primeraCampanaId && (
+        <div style={{ marginBottom: '2rem' }}>
+          <p className="section-heading">Comparativa: Recaudado vs Meta</p>
+          <div className="card" style={{ padding: '1.5rem' }}>
+            <ChartRecaudacionVsMeta 
+              data={recaudacionVsMetaQ.data} 
+              loading={recaudacionVsMetaQ.loading} 
+              error={recaudacionVsMetaQ.error} 
+            />
+          </div>
+        </div>
+      )}
+
+      <div style={{ marginBottom: '2rem' }}>
+        <p className="section-heading">Recaudación por Método (últimos 30 días)</p>
+        <div className="card" style={{ padding: '1.5rem' }}>
+          <ChartRecaudacionPorMetodo 
+            data={recaudacionPorMetodoQ.data} 
+            loading={recaudacionPorMetodoQ.loading} 
+            error={recaudacionPorMetodoQ.error} 
+          />
+        </div>
+      </div>
 
       <p className="section-heading">Campañas</p>
       <div className="grid grid-auto">

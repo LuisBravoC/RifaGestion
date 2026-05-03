@@ -14,6 +14,7 @@ import Drawer from '../components/Drawer.jsx'
 import ConfirmModal from '../components/ConfirmModal.jsx'
 import ErrorModal from '../components/ErrorModal.jsx'
 import { parseError } from '../lib/parseError.js'
+import ChartBoletosPorEstatus from '../components/ChartBoletosPorEstatus.jsx'
 
 const CUPOS_COMUNES = [100, 200, 500, 1000]
 
@@ -34,6 +35,7 @@ export default function SorteosList() {
   const navigate = useNavigate()
   const campanaQ  = useQuery(() => q.getCampana(campanaId), [campanaId])
   const rifasQ    = useQuery(() => q.getRifasConResumen(campanaId), [campanaId])
+  const boletosPorEstatusQ = useQuery(() => q.getBoletosPorEstatusCampana(campanaId), [campanaId])
 
   const [drawer,   setDrawer]   = useState(null)
   const [form,     setForm]     = useState(EMPTY)
@@ -124,6 +126,18 @@ export default function SorteosList() {
               <Plus size={15} /> Nueva rifa
             </button>
           )}
+        </div>
+
+        {/* Gráfica de boletos por estatus */}
+        <div style={{ marginBottom: '2rem' }}>
+          <p className="section-heading">Estado de los Boletos</p>
+          <div className="card" style={{ padding: '1.5rem' }}>
+            <ChartBoletosPorEstatus
+              data={boletosPorEstatusQ.data}
+              loading={boletosPorEstatusQ.loading}
+              error={boletosPorEstatusQ.error}
+            />
+          </div>
         </div>
 
         <div className="grid grid-auto">
