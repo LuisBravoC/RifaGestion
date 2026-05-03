@@ -1,8 +1,8 @@
 import { Link } from 'react-router-dom'
-import { Ticket, ArrowRight, Activity, TrendingUp, Target, CreditCard, CalendarDays, Users } from 'lucide-react'
+import { Ticket, ArrowRight, Activity, TrendingUp, Target, CreditCard, CalendarDays, Users, PieChart as PieIcon, Trophy } from 'lucide-react'
 import { useState, useMemo } from 'react'
 import { useQuery } from '../lib/useQuery.js'
-import { getCampanasConResumen, getRecaudacionPorDia, getRecaudacionVsMeta, getRecaudacionPorMetodoPago, getApartadosPorDia, getNuevosParticipantesPorDia } from '../lib/rifas-queries.js'
+import { getCampanasConResumen, getRecaudacionPorDia, getRecaudacionVsMeta, getRecaudacionPorMetodoPago, getApartadosPorDia, getNuevosParticipantesPorDia, getBoletosPorGrupo, getTop5ParticipantesPorBoletos } from '../lib/rifas-queries.js'
 import { fmt } from '../lib/formatters.js'
 import ProgressBar from '../components/ProgressBar.jsx'
 import LoadingSpinner, { ErrorMsg } from '../components/LoadingSpinner.jsx'
@@ -11,6 +11,8 @@ import ChartRecaudacionVsMeta from '../components/ChartRecaudacionVsMeta.jsx'
 import ChartRecaudacionPorMetodo from '../components/ChartRecaudacionPorMetodo.jsx'
 import ChartApartadosPorDia from '../components/ChartApartadosPorDia.jsx'
 import ChartNuevosParticipantes from '../components/ChartNuevosParticipantes.jsx'
+import ChartGrupoSocial from '../components/ChartGrupoSocial.jsx'
+import ChartTop5Participantes from '../components/ChartTop5Participantes.jsx'
 
 const PERIODOS = [
   { id: '7d',  label: '7 días' },
@@ -50,7 +52,7 @@ function PeriodoSelector({ value, onChange }) {
 }
 
 export default function Dashboard() {
-  const [periodo, setPeriodo] = useState('30d')
+  const [periodo, setPeriodo] = useState('sem')
   const [openCharts, setOpenCharts] = useState(new Set())
   const range = useMemo(() => getRange(periodo), [periodo])
 
@@ -66,6 +68,8 @@ export default function Dashboard() {
   const campanasQ = useQuery(() => getCampanasConResumen(), [])
   const recaudacionDiaQ = useQuery(() => getRecaudacionPorDia(range), [range])
   const recaudacionPorMetodoQ = useQuery(() => getRecaudacionPorMetodoPago(), [])
+  const grupoSocialQ          = useQuery(() => getBoletosPorGrupo(), [])
+  const top5Q                 = useQuery(() => getTop5ParticipantesPorBoletos(), [])
   const apartadosDiaQ = useQuery(() => getApartadosPorDia(range), [range])
   const participantesDiaQ = useQuery(() => getNuevosParticipantesPorDia(range), [range])
 
@@ -116,11 +120,13 @@ export default function Dashboard() {
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: '.75rem', marginBottom: openCharts.size > 0 ? '1rem' : 0 }}>
           <div style={{ display: 'flex', gap: '.35rem', flexWrap: 'wrap' }}>
             {[
-              { id: 'recaudacion', label: 'Recaudación',  Icon: TrendingUp },
-              { id: 'apartados',   label: 'Apartados',    Icon: CalendarDays },
-              { id: 'participantes', label: 'Participantes', Icon: Users },
-              { id: 'metas',       label: 'Metas',        Icon: Target },
-              { id: 'metodos',     label: 'Métodos',      Icon: CreditCard },
+              { id: 'recaudacion',   label: 'Recaudación',    Icon: TrendingUp },
+              { id: 'apartados',     label: 'Apartados',      Icon: CalendarDays },
+              { id: 'participantes', label: 'Participantes',  Icon: Users },
+              { id: 'metas',         label: 'Metas',          Icon: Target },
+              { id: 'metodos',       label: 'Métodos',        Icon: CreditCard },
+              { id: 'grupos',        label: 'Grupos',         Icon: PieIcon },
+              { id: 'top5',          label: 'Top 5',          Icon: Trophy },
             ].map(({ id, label, Icon }) => {
               const active = openCharts.has(id)
               return (
@@ -148,6 +154,8 @@ export default function Dashboard() {
             { id: 'participantes', title: 'Nuevos participantes por día', chart: <ChartNuevosParticipantes data={participantesDiaQ.data} loading={participantesDiaQ.loading} error={participantesDiaQ.error} height={240} /> },
             ...(primeraCampanaId ? [{ id: 'metas', title: 'Recaudado vs Meta', chart: <ChartRecaudacionVsMeta data={recaudacionVsMetaQ.data} loading={recaudacionVsMetaQ.loading} error={recaudacionVsMetaQ.error} height={240} /> }] : []),
             { id: 'metodos', title: 'Recaudación por método de pago', chart: <ChartRecaudacionPorMetodo data={recaudacionPorMetodoQ.data} loading={recaudacionPorMetodoQ.loading} error={recaudacionPorMetodoQ.error} height={240} /> },
+            { id: 'grupos',  title: 'Distribución por grupo social', chart: <ChartGrupoSocial data={grupoSocialQ.data} loading={grupoSocialQ.loading} error={grupoSocialQ.error} height={260} /> },
+            { id: 'top5',    title: 'Top 5 participantes por boletos', chart: <ChartTop5Participantes data={top5Q.data} loading={top5Q.loading} error={top5Q.error} height={220} /> },
           ].filter(s => openCharts.has(s.id))
 
           if (sections.length === 0) return null

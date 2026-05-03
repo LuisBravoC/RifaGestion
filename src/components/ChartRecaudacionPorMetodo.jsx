@@ -13,7 +13,9 @@ export default function ChartRecaudacionPorMetodo({ data, loading, error, height
           <XAxis type="number" stroke="var(--text-muted)" tick={{ fontSize: 11 }} axisLine={false} tickLine={false} />
           <YAxis dataKey="name" type="category" stroke="var(--text-muted)" tick={{ fontSize: 11 }} width={120} axisLine={false} tickLine={false} />
           <Tooltip
-            contentStyle={{ background: 'var(--bg-secondary)', border: '1px solid var(--border)', borderRadius: '.5rem', fontSize: '.82rem' }}
+            contentStyle={{ background: 'rgba(15,23,42,.92)', backdropFilter: 'blur(8px)', border: '1px solid rgba(255,255,255,.08)', borderRadius: '.5rem', fontSize: '.82rem', padding: '.5rem .75rem' }}
+            labelStyle={{ color: '#94a3b8', marginBottom: '.2rem', fontSize: '.75rem' }}
+            itemStyle={{ color: '#f1f5f9' }}
             formatter={(value) => [`$${Number(value).toLocaleString('es-MX')}`, 'Monto']}
             cursor={{ fill: 'transparent' }}
           />

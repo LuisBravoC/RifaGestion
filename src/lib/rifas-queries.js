@@ -1102,3 +1102,58 @@ export async function getRecaudacionPorMetodoPago() {
     value: monto,
   }))
 }
+
+/**
+ * Distribución de boletos (liquidados + apartados) por grupo social.
+ * Para gráfica: PieChart.
+ */
+export async function getBoletosPorGrupo() {
+  const { data, error } = await supabase
+    .from('boletos')
+    .select(`
+      estatus,
+      participantes(
+        grupo_id,
+        grupos(nombre, color)
+      )
+    `)
+    .in('estatus', ['Liquidado', 'Apartado'])
+  check({ data, error }, 'getBoletosPorGrupo')
+
+  const resumen = {}
+  for (const b of data ?? []) {
+    const grupo = b.participantes?.grupos?.nombre ?? 'Sin grupo'
+    const color = b.participantes?.grupos?.color ?? '#6366f1'
+    if (!resumen[grupo]) resumen[grupo] = { name: grupo, value: 0, color }
+    resumen[grupo].value++
+  }
+  return Object.values(resumen).sort((a, b) => b.value - a.value)
+}
+
+/**
+ * Top 5 participantes con más boletos (liquidados + apartados).
+ * Para gráfica: BarChart horizontal.
+ */
+export async function getTop5ParticipantesPorBoletos() {
+  const { data, error } = await supabase
+    .from('boletos')
+    .select(`
+      participante_id,
+      participantes(nombre_completo)
+    `)
+    .in('estatus', ['Liquidado', 'Apartado'])
+  check({ data, error }, 'getTop5ParticipantesPorBoletos')
+
+  const resumen = {}
+  for (const b of data ?? []) {
+    if (!b.participante_id) continue
+    const nombre = b.participantes?.nombre_completo ?? 'Desconocido'
+    resumen[b.participante_id] = {
+      name: nombre.split(' ').slice(0, 2).join(' '), // primeros 2 nombres
+      value: (resumen[b.participante_id]?.value ?? 0) + 1,
+    }
+  }
+  return Object.values(resumen)
+    .sort((a, b) => b.value - a.value)
+    .slice(0, 5)
+}
