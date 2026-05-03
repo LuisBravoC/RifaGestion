@@ -1,5 +1,6 @@
 import { Link } from 'react-router-dom'
 import { Ticket, ArrowRight, Activity } from 'lucide-react'
+import { useState } from 'react'
 import { useQuery } from '../lib/useQuery.js'
 import { getCampanasConResumen, getRecaudacionPorMes, getRecaudacionVsMeta, getRecaudacionPorMetodoPago } from '../lib/rifas-queries.js'
 import { fmt } from '../lib/formatters.js'
@@ -10,6 +11,7 @@ import ChartRecaudacionVsMeta from '../components/ChartRecaudacionVsMeta.jsx'
 import ChartRecaudacionPorMetodo from '../components/ChartRecaudacionPorMetodo.jsx'
 
 export default function Dashboard() {
+  const [chartMode, setChartMode] = useState('todas')
   const campanasQ = useQuery(() => getCampanasConResumen(), [])
   const recaudacionMesQ = useQuery(() => getRecaudacionPorMes(), [])
   const recaudacionPorMetodoQ = useQuery(() => getRecaudacionPorMetodoPago(), [])
@@ -57,22 +59,85 @@ export default function Dashboard() {
 
       <ProgressBar value={totalRecaudado} max={totalMeta} />
 
-      {/* Gráficas */}
-      <div style={{ marginTop: '2rem', marginBottom: '2rem' }}>
-        <p className="section-heading">Recaudación por Mes</p>
-        <div className="card" style={{ padding: '1.5rem' }}>
-          <ChartRecaudacionMes 
-            data={recaudacionMesQ.data} 
-            loading={recaudacionMesQ.loading} 
-            error={recaudacionMesQ.error} 
-          />
-        </div>
+      {/* Selector de Gráficas */}
+      <div style={{ marginTop: '2rem', marginBottom: '1rem', display: 'flex', gap: '.5rem', flexWrap: 'wrap' }}>
+        {['todas', 'recaudacion', 'metas', 'metodos'].map(mode => (
+          <button
+            key={mode}
+            onClick={() => setChartMode(mode)}
+            style={{
+              padding: '.5rem 1rem',
+              borderRadius: '.5rem',
+              border: 'none',
+              cursor: 'pointer',
+              background: chartMode === mode ? 'var(--accent-light)' : 'var(--bg-secondary)',
+              color: chartMode === mode ? 'var(--bg)' : 'var(--text)',
+              fontSize: '.85rem',
+              fontWeight: chartMode === mode ? '600' : '500',
+              transition: 'all .2s ease',
+            }}
+          >
+            {mode === 'todas' && '📊 Todas'}
+            {mode === 'recaudacion' && '📈 Recaudación'}
+            {mode === 'metas' && '🎯 Metas'}
+            {mode === 'metodos' && '💳 Métodos'}
+          </button>
+        ))}
       </div>
 
-      {primeraCampanaId && (
-        <div style={{ marginBottom: '2rem' }}>
-          <p className="section-heading">Comparativa: Recaudado vs Meta</p>
-          <div className="card" style={{ padding: '1.5rem' }}>
+      {/* Todas las gráficas en modo compacto */}
+      {chartMode === 'todas' && (
+        <div className="card" style={{ padding: '1.5rem', marginBottom: '2rem' }}>
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(500px, 1fr))', gap: '1.5rem' }}>
+            <div>
+              <p style={{ fontSize: '.9rem', fontWeight: '600', marginBottom: '.5rem', color: 'var(--text-muted)' }}>Recaudación por Mes</p>
+              <ChartRecaudacionMes 
+                data={recaudacionMesQ.data} 
+                loading={recaudacionMesQ.loading} 
+                error={recaudacionMesQ.error} 
+              />
+            </div>
+            {primeraCampanaId && (
+              <div>
+                <p style={{ fontSize: '.9rem', fontWeight: '600', marginBottom: '.5rem', color: 'var(--text-muted)' }}>Recaudado vs Meta</p>
+                <ChartRecaudacionVsMeta 
+                  data={recaudacionVsMetaQ.data} 
+                  loading={recaudacionVsMetaQ.loading} 
+                  error={recaudacionVsMetaQ.error} 
+                />
+              </div>
+            )}
+            <div>
+              <p style={{ fontSize: '.9rem', fontWeight: '600', marginBottom: '.5rem', color: 'var(--text-muted)' }}>Recaudación por Método (30d)</p>
+              <ChartRecaudacionPorMetodo 
+                data={recaudacionPorMetodoQ.data} 
+                loading={recaudacionPorMetodoQ.loading} 
+                error={recaudacionPorMetodoQ.error} 
+              />
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Modo individual - Recaudación */}
+      {chartMode === 'recaudacion' && (
+        <div className="card" style={{ padding: '1.5rem', marginBottom: '2rem' }}>
+          <p className="section-heading" style={{ marginTop: 0 }}>📈 Recaudación por Mes</p>
+          <div style={{ height: 400 }}>
+            <ChartRecaudacionMes 
+              data={recaudacionMesQ.data} 
+              loading={recaudacionMesQ.loading} 
+              error={recaudacionMesQ.error} 
+            />
+          </div>
+        </div>
+      )}
+
+      {/* Modo individual - Metas */}
+      {chartMode === 'metas' && primeraCampanaId && (
+        <div className="card" style={{ padding: '1.5rem', marginBottom: '2rem' }}>
+          <p className="section-heading" style={{ marginTop: 0 }}>🎯 Recaudado vs Meta</p>
+          <div style={{ height: 400 }}>
             <ChartRecaudacionVsMeta 
               data={recaudacionVsMetaQ.data} 
               loading={recaudacionVsMetaQ.loading} 
@@ -82,16 +147,19 @@ export default function Dashboard() {
         </div>
       )}
 
-      <div style={{ marginBottom: '2rem' }}>
-        <p className="section-heading">Recaudación por Método (últimos 30 días)</p>
-        <div className="card" style={{ padding: '1.5rem' }}>
-          <ChartRecaudacionPorMetodo 
-            data={recaudacionPorMetodoQ.data} 
-            loading={recaudacionPorMetodoQ.loading} 
-            error={recaudacionPorMetodoQ.error} 
-          />
+      {/* Modo individual - Métodos */}
+      {chartMode === 'metodos' && (
+        <div className="card" style={{ padding: '1.5rem', marginBottom: '2rem' }}>
+          <p className="section-heading" style={{ marginTop: 0 }}>💳 Recaudación por Método (últimos 30 días)</p>
+          <div style={{ height: 400 }}>
+            <ChartRecaudacionPorMetodo 
+              data={recaudacionPorMetodoQ.data} 
+              loading={recaudacionPorMetodoQ.loading} 
+              error={recaudacionPorMetodoQ.error} 
+            />
+          </div>
         </div>
-      </div>
+      )}
 
       <p className="section-heading">Campañas</p>
       <div className="grid grid-auto">
