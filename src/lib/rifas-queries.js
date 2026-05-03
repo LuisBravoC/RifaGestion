@@ -883,6 +883,93 @@ export async function importarBoletos(rifaId, filas, precioBoleto) {
  * Recaudación por mes (últimos 6 meses).
  * Para gráfica: LineChart con fechas y montos.
  */
+export async function getRecaudacionPorDia() {
+  const hace30Dias = new Date()
+  hace30Dias.setDate(hace30Dias.getDate() - 30)
+
+  const { data, error } = await supabase
+    .from('historial_pagos_rifa')
+    .select('created_at, monto')
+    .gte('created_at', hace30Dias.toISOString())
+  check({ data, error }, 'getRecaudacionPorDia')
+
+  const resumen = {}
+  for (const p of data ?? []) {
+    const key = new Date(p.created_at).toLocaleDateString('es-MX', { day: '2-digit', month: 'short' })
+    resumen[key] = (resumen[key] ?? 0) + Number(p.monto)
+  }
+
+  const result = []
+  for (let i = 29; i >= 0; i--) {
+    const d = new Date()
+    d.setDate(d.getDate() - i)
+    const key = d.toLocaleDateString('es-MX', { day: '2-digit', month: 'short' })
+    result.push({ dia: key, recaudado: resumen[key] ?? 0 })
+  }
+  return result
+}
+
+/**
+ * Boletos apartados por día (últimos 30 días).
+ * Fuente: bitacora_boletos donde estatus_nuevo = 'Apartado'.
+ */
+export async function getApartadosPorDia() {
+  const hace30Dias = new Date()
+  hace30Dias.setDate(hace30Dias.getDate() - 30)
+
+  const { data, error } = await supabase
+    .from('bitacora_boletos')
+    .select('created_at')
+    .eq('estatus_nuevo', 'Apartado')
+    .gte('created_at', hace30Dias.toISOString())
+  check({ data, error }, 'getApartadosPorDia')
+
+  const resumen = {}
+  for (const b of data ?? []) {
+    const key = new Date(b.created_at).toLocaleDateString('es-MX', { day: '2-digit', month: 'short' })
+    resumen[key] = (resumen[key] ?? 0) + 1
+  }
+
+  const result = []
+  for (let i = 29; i >= 0; i--) {
+    const d = new Date()
+    d.setDate(d.getDate() - i)
+    const key = d.toLocaleDateString('es-MX', { day: '2-digit', month: 'short' })
+    result.push({ dia: key, apartados: resumen[key] ?? 0 })
+  }
+  return result
+}
+
+/**
+ * Nuevos participantes por día (últimos 30 días).
+ * Para gráfica: BarChart de adquisición.
+ */
+export async function getNuevosParticipantesPorDia() {
+  const hace30Dias = new Date()
+  hace30Dias.setDate(hace30Dias.getDate() - 30)
+
+  const { data, error } = await supabase
+    .from('participantes')
+    .select('created_at')
+    .gte('created_at', hace30Dias.toISOString())
+  check({ data, error }, 'getNuevosParticipantesPorDia')
+
+  const resumen = {}
+  for (const p of data ?? []) {
+    const key = new Date(p.created_at).toLocaleDateString('es-MX', { day: '2-digit', month: 'short' })
+    resumen[key] = (resumen[key] ?? 0) + 1
+  }
+
+  const result = []
+  for (let i = 29; i >= 0; i--) {
+    const d = new Date()
+    d.setDate(d.getDate() - i)
+    const key = d.toLocaleDateString('es-MX', { day: '2-digit', month: 'short' })
+    result.push({ dia: key, participantes: resumen[key] ?? 0 })
+  }
+  return result
+}
+
 export async function getRecaudacionPorMes() {
   const hace6Meses = new Date()
   hace6Meses.setMonth(hace6Meses.getMonth() - 6)

@@ -1,23 +1,25 @@
 import { Link } from 'react-router-dom'
-import { Ticket, ArrowRight, Activity } from 'lucide-react'
+import { Ticket, ArrowRight, Activity, LayoutDashboard, TrendingUp, Target, CreditCard, CalendarDays, Users } from 'lucide-react'
 import { useState } from 'react'
 import { useQuery } from '../lib/useQuery.js'
-import { getCampanasConResumen, getRecaudacionPorMes, getRecaudacionVsMeta, getRecaudacionPorMetodoPago } from '../lib/rifas-queries.js'
+import { getCampanasConResumen, getRecaudacionPorDia, getRecaudacionVsMeta, getRecaudacionPorMetodoPago, getApartadosPorDia, getNuevosParticipantesPorDia } from '../lib/rifas-queries.js'
 import { fmt } from '../lib/formatters.js'
 import ProgressBar from '../components/ProgressBar.jsx'
 import LoadingSpinner, { ErrorMsg } from '../components/LoadingSpinner.jsx'
 import ChartRecaudacionMes from '../components/ChartRecaudacionMes.jsx'
 import ChartRecaudacionVsMeta from '../components/ChartRecaudacionVsMeta.jsx'
 import ChartRecaudacionPorMetodo from '../components/ChartRecaudacionPorMetodo.jsx'
+import ChartApartadosPorDia from '../components/ChartApartadosPorDia.jsx'
+import ChartNuevosParticipantes from '../components/ChartNuevosParticipantes.jsx'
 
 export default function Dashboard() {
   const [chartMode, setChartMode] = useState('todas')
   const campanasQ = useQuery(() => getCampanasConResumen(), [])
-  const recaudacionMesQ = useQuery(() => getRecaudacionPorMes(), [])
+  const recaudacionDiaQ = useQuery(() => getRecaudacionPorDia(), [])
   const recaudacionPorMetodoQ = useQuery(() => getRecaudacionPorMetodoPago(), [])
+  const apartadosDiaQ = useQuery(() => getApartadosPorDia(), [])
+  const participantesDiaQ = useQuery(() => getNuevosParticipantesPorDia(), [])
 
-  // Para gráfica vs Meta, necesitamos seleccionar una campaña o mostrar todas
-  // Por ahora mostraremos la primera campaña activa
   const primeraCampanaId = campanasQ.data?.[0]?.id
   const recaudacionVsMetaQ = useQuery(
     () => primeraCampanaId ? getRecaudacionVsMeta(primeraCampanaId) : Promise.resolve([]),
@@ -60,104 +62,110 @@ export default function Dashboard() {
       <ProgressBar value={totalRecaudado} max={totalMeta} />
 
       {/* Selector de Gráficas */}
-      <div style={{ marginTop: '2rem', marginBottom: '1rem', display: 'flex', gap: '.5rem', flexWrap: 'wrap' }}>
-        {['todas', 'recaudacion', 'metas', 'metodos'].map(mode => (
-          <button
-            key={mode}
-            onClick={() => setChartMode(mode)}
-            style={{
-              padding: '.5rem 1rem',
-              borderRadius: '.5rem',
-              border: 'none',
-              cursor: 'pointer',
-              background: chartMode === mode ? 'var(--accent-light)' : 'var(--bg-secondary)',
-              color: chartMode === mode ? 'var(--bg)' : 'var(--text)',
-              fontSize: '.85rem',
-              fontWeight: chartMode === mode ? '600' : '500',
-              transition: 'all .2s ease',
-            }}
-          >
-            {mode === 'todas' && '📊 Todas'}
-            {mode === 'recaudacion' && '📈 Recaudación'}
-            {mode === 'metas' && '🎯 Metas'}
-            {mode === 'metodos' && '💳 Métodos'}
-          </button>
-        ))}
-      </div>
+      {(() => {
+        const TABS = [
+          { id: 'todas',       label: 'Todas',         Icon: LayoutDashboard },
+          { id: 'recaudacion', label: 'Recaudación',   Icon: TrendingUp },
+          { id: 'actividad',   label: 'Actividad',     Icon: CalendarDays },
+          { id: 'metas',       label: 'Metas',         Icon: Target },
+          { id: 'metodos',     label: 'Métodos',       Icon: CreditCard },
+          { id: 'participantes', label: 'Participantes', Icon: Users },
+        ]
+        return (
+          <div style={{ marginTop: '2rem', marginBottom: '1rem', display: 'flex', gap: '.4rem', flexWrap: 'wrap' }}>
+            {TABS.map(({ id, label, Icon }) => (
+              <button
+                key={id}
+                onClick={() => setChartMode(id)}
+                style={{
+                  padding: '.45rem .9rem',
+                  borderRadius: '.5rem',
+                  border: 'none',
+                  cursor: 'pointer',
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '.35rem',
+                  background: chartMode === id ? 'var(--accent-light)' : 'var(--bg-secondary)',
+                  color: chartMode === id ? 'var(--bg)' : 'var(--text)',
+                  fontSize: '.83rem',
+                  fontWeight: chartMode === id ? '600' : '500',
+                  transition: 'all .15s ease',
+                }}
+              >
+                <Icon size={13} />{label}
+              </button>
+            ))}
+          </div>
+        )
+      })()}
 
-      {/* Todas las gráficas en modo compacto */}
+      {/* Todas las gráficas en modo compacto 2×3 */}
       {chartMode === 'todas' && (
-        <div className="card" style={{ padding: '1.5rem', marginBottom: '2rem' }}>
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(500px, 1fr))', gap: '1.5rem' }}>
+        <div className="card" style={{ padding: '1.25rem 1.5rem', marginBottom: '2rem' }}>
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))', gap: '1.25rem 1.75rem' }}>
             <div>
-              <p style={{ fontSize: '.9rem', fontWeight: '600', marginBottom: '.5rem', color: 'var(--text-muted)' }}>Recaudación por Mes</p>
-              <ChartRecaudacionMes 
-                data={recaudacionMesQ.data} 
-                loading={recaudacionMesQ.loading} 
-                error={recaudacionMesQ.error} 
-              />
+              <p style={{ fontSize: '.75rem', fontWeight: '600', textTransform: 'uppercase', letterSpacing: '.04em', color: 'var(--text-muted)', margin: '0 0 .4rem' }}>Recaudación por día</p>
+              <ChartRecaudacionMes data={recaudacionDiaQ.data} loading={recaudacionDiaQ.loading} error={recaudacionDiaQ.error} height={200} xKey="dia" />
+            </div>
+            <div>
+              <p style={{ fontSize: '.75rem', fontWeight: '600', textTransform: 'uppercase', letterSpacing: '.04em', color: 'var(--text-muted)', margin: '0 0 .4rem' }}>Apartados por día</p>
+              <ChartApartadosPorDia data={apartadosDiaQ.data} loading={apartadosDiaQ.loading} error={apartadosDiaQ.error} height={200} />
+            </div>
+            <div>
+              <p style={{ fontSize: '.75rem', fontWeight: '600', textTransform: 'uppercase', letterSpacing: '.04em', color: 'var(--text-muted)', margin: '0 0 .4rem' }}>Nuevos participantes / día</p>
+              <ChartNuevosParticipantes data={participantesDiaQ.data} loading={participantesDiaQ.loading} error={participantesDiaQ.error} height={200} />
             </div>
             {primeraCampanaId && (
               <div>
-                <p style={{ fontSize: '.9rem', fontWeight: '600', marginBottom: '.5rem', color: 'var(--text-muted)' }}>Recaudado vs Meta</p>
-                <ChartRecaudacionVsMeta 
-                  data={recaudacionVsMetaQ.data} 
-                  loading={recaudacionVsMetaQ.loading} 
-                  error={recaudacionVsMetaQ.error} 
-                />
+                <p style={{ fontSize: '.75rem', fontWeight: '600', textTransform: 'uppercase', letterSpacing: '.04em', color: 'var(--text-muted)', margin: '0 0 .4rem' }}>Recaudado vs Meta</p>
+                <ChartRecaudacionVsMeta data={recaudacionVsMetaQ.data} loading={recaudacionVsMetaQ.loading} error={recaudacionVsMetaQ.error} height={200} />
               </div>
             )}
             <div>
-              <p style={{ fontSize: '.9rem', fontWeight: '600', marginBottom: '.5rem', color: 'var(--text-muted)' }}>Recaudación por Método (30d)</p>
-              <ChartRecaudacionPorMetodo 
-                data={recaudacionPorMetodoQ.data} 
-                loading={recaudacionPorMetodoQ.loading} 
-                error={recaudacionPorMetodoQ.error} 
-              />
+              <p style={{ fontSize: '.75rem', fontWeight: '600', textTransform: 'uppercase', letterSpacing: '.04em', color: 'var(--text-muted)', margin: '0 0 .4rem' }}>Métodos de pago (30d)</p>
+              <ChartRecaudacionPorMetodo data={recaudacionPorMetodoQ.data} loading={recaudacionPorMetodoQ.loading} error={recaudacionPorMetodoQ.error} height={200} />
             </div>
           </div>
         </div>
       )}
 
-      {/* Modo individual - Recaudación */}
+      {/* Recaudación por día */}
       {chartMode === 'recaudacion' && (
         <div className="card" style={{ padding: '1.5rem', marginBottom: '2rem' }}>
-          <p className="section-heading" style={{ marginTop: 0 }}>📈 Recaudación por Mes</p>
-          <div style={{ height: 400 }}>
-            <ChartRecaudacionMes 
-              data={recaudacionMesQ.data} 
-              loading={recaudacionMesQ.loading} 
-              error={recaudacionMesQ.error} 
-            />
-          </div>
+          <p className="section-heading" style={{ marginTop: 0 }}>Recaudación por día (30d)</p>
+          <ChartRecaudacionMes data={recaudacionDiaQ.data} loading={recaudacionDiaQ.loading} error={recaudacionDiaQ.error} height={280} xKey="dia" />
         </div>
       )}
 
-      {/* Modo individual - Metas */}
+      {/* Actividad: apartados por día */}
+      {chartMode === 'actividad' && (
+        <div className="card" style={{ padding: '1.5rem', marginBottom: '2rem' }}>
+          <p className="section-heading" style={{ marginTop: 0 }}>Boletos apartados por día (30d)</p>
+          <ChartApartadosPorDia data={apartadosDiaQ.data} loading={apartadosDiaQ.loading} error={apartadosDiaQ.error} height={280} />
+        </div>
+      )}
+
+      {/* Metas */}
       {chartMode === 'metas' && primeraCampanaId && (
         <div className="card" style={{ padding: '1.5rem', marginBottom: '2rem' }}>
-          <p className="section-heading" style={{ marginTop: 0 }}>🎯 Recaudado vs Meta</p>
-          <div style={{ height: 400 }}>
-            <ChartRecaudacionVsMeta 
-              data={recaudacionVsMetaQ.data} 
-              loading={recaudacionVsMetaQ.loading} 
-              error={recaudacionVsMetaQ.error} 
-            />
-          </div>
+          <p className="section-heading" style={{ marginTop: 0 }}>Recaudado vs Meta</p>
+          <ChartRecaudacionVsMeta data={recaudacionVsMetaQ.data} loading={recaudacionVsMetaQ.loading} error={recaudacionVsMetaQ.error} height={280} />
         </div>
       )}
 
-      {/* Modo individual - Métodos */}
+      {/* Métodos */}
       {chartMode === 'metodos' && (
         <div className="card" style={{ padding: '1.5rem', marginBottom: '2rem' }}>
-          <p className="section-heading" style={{ marginTop: 0 }}>💳 Recaudación por Método (últimos 30 días)</p>
-          <div style={{ height: 400 }}>
-            <ChartRecaudacionPorMetodo 
-              data={recaudacionPorMetodoQ.data} 
-              loading={recaudacionPorMetodoQ.loading} 
-              error={recaudacionPorMetodoQ.error} 
-            />
-          </div>
+          <p className="section-heading" style={{ marginTop: 0 }}>Recaudación por método de pago (30d)</p>
+          <ChartRecaudacionPorMetodo data={recaudacionPorMetodoQ.data} loading={recaudacionPorMetodoQ.loading} error={recaudacionPorMetodoQ.error} height={280} />
+        </div>
+      )}
+
+      {/* Participantes (propuesta) */}
+      {chartMode === 'participantes' && (
+        <div className="card" style={{ padding: '1.5rem', marginBottom: '2rem' }}>
+          <p className="section-heading" style={{ marginTop: 0 }}>Nuevos participantes por día (30d)</p>
+          <ChartNuevosParticipantes data={participantesDiaQ.data} loading={participantesDiaQ.loading} error={participantesDiaQ.error} height={280} />
         </div>
       )}
 
