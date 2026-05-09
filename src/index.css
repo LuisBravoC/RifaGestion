@@ -1601,9 +1601,6 @@ html.google .stat-label {
 }
 .toolbar-dd-r { right: 0; left: auto; }
 .toolbar-dd-l { left: 0;  right: auto; }
-@media (max-width: 520px) {
-  .toolbar-dd-r { left: 0; right: auto; }
-}
 .toolbar-dd-item {
   display: flex;
   align-items: center;
