@@ -4,7 +4,7 @@ import {
   Trophy, Search, Plus, X, CheckCircle2, Trash2,
   Calendar, DollarSign, Zap, Clock, UserPlus,
   LayoutGrid, List as ListIcon, RotateCcw, ArrowRight,
-  Upload, Download, FileText,
+  Upload, Download, FileText, Scissors,
 } from 'lucide-react'
 import { useQuery } from '../lib/useQuery.js'
 import { useToast } from '../lib/toast.jsx'
@@ -23,7 +23,7 @@ import BoletoPanel from '../components/BoletoPanel.jsx'
 import TombolaModal from '../components/TombolaModal.jsx'
 import ImportModal from '../components/ImportModal.jsx'
 import { parseCSV, parseFechaCSV, csvEsc, exportarBoletos, buildImportPreview, previewToFilas } from '../lib/csv-utils.js'
-import { generarRifaPDF } from '../lib/rifaPdf.js'
+import { generarRifaPDF, generarPapelitosPDF } from '../lib/rifaPdf.js'
 import StatusBadge from '../components/StatusBadge.jsx'
 import GrupoBadge from '../components/GrupoBadge.jsx'
 
@@ -48,6 +48,8 @@ export default function BoletoGrid() {
 
   // ── Ganadores ──────────────────────────────────────────────────────────────
   const { ganadores, tombola, handleTombolaClose, ultimoGanador, handleElegirGanador, handleRemoveGanador, handleResetSorteo } = useGanadores(rifaId, rifaQ.data, showErr)
+  const [menuPrint, setMenuPrint] = useState(false)
+  const [menuCSV,   setMenuCSV]   = useState(false)
   const [viewMode,     setViewMode]     = useState('grid')  // 'grid' | 'list'
   const [filterStatus, setFilterStatus] = useState(null)    // null = Todos
   const [filterGrupo,  setFilterGrupo]  = useState('')      // '' = Todos
@@ -61,6 +63,10 @@ export default function BoletoGrid() {
   // ── Generar PDF ──────────────────────────────────────────────────────────
   function handlePDF() {
     generarRifaPDF(rifa, boletos, stats, total, { fechaMode: pdfFechaMode })
+  }
+
+  function handlePapelitos() {
+    generarPapelitosPDF(rifa, boletos, total)
   }
 
   // ── Exportar CSV ───────────────────────────────────────────────────────────
@@ -172,40 +178,76 @@ export default function BoletoGrid() {
               </span>
             </div>
           </div>
-          <div style={{ display: 'flex', gap: '.4rem', flexWrap: 'wrap', justifyContent: 'flex-end' }}>
-            <div style={{ display: 'flex', gap: '.4rem', alignItems: 'center' }}>
-              <div style={{ display: 'flex', border: '1px solid var(--border)', borderRadius: '6px', overflow: 'hidden' }}>
-                <button
-                  type="button"
-                  className={`btn btn-sm ${pdfFechaMode === 'fecha' ? 'btn-primary' : 'btn-outline'}`}
-                  style={{ borderRadius: 0, border: 'none', gap: '.25rem' }}
-                  onClick={() => setPdfFechaMode('fecha')}
-                  title="Mostrar fecha de sorteo en el PDF"
-                >
-                  <Calendar size={12} /> Fecha
-                </button>
-                <button
-                  type="button"
-                  className={`btn btn-sm ${pdfFechaMode === 'agotarse' ? 'btn-primary' : 'btn-outline'}`}
-                  style={{ borderRadius: 0, border: 'none', borderLeft: '1px solid var(--border)', gap: '.25rem' }}
-                  onClick={() => setPdfFechaMode('agotarse')}
-                  title="Mostrar «Hasta agotar boletos» en el PDF"
-                >
-                  <FileText size={12} /> Hasta agotar
-                </button>
-              </div>
-              <button className="btn btn-outline btn-sm" onClick={handlePDF} title="Generar PDF / Imprimir">
-                <FileText size={14} /> PDF
+          <div style={{ display: 'flex', gap: '.5rem', flexWrap: 'wrap', justifyContent: 'flex-end', alignItems: 'center' }}>
+
+            {/* ── Dropdown Imprimir ── */}
+            <div style={{ position: 'relative' }}>
+              <button
+                className="btn btn-outline"
+                onClick={() => { setMenuPrint(v => !v); setMenuCSV(false) }}
+              >
+                <FileText size={15} /> Imprimir ▾
               </button>
+              {menuPrint && (
+                <>
+                  <div style={{ position: 'fixed', inset: 0, zIndex: 9 }} onClick={() => setMenuPrint(false)} />
+                  <div className="toolbar-dd toolbar-dd-l" style={{ minWidth: '220px', zIndex: 10 }}>
+                    {/* Toggle modo fecha */}
+                    <div style={{ padding: '.5rem .75rem .65rem', marginBottom: '.25rem', borderBottom: '1px solid var(--border)' }}>
+                      <p style={{ fontSize: '.72rem', color: 'var(--text-muted)', marginBottom: '.45rem', marginTop: 0 }}>Fecha en PDF</p>
+                      <div style={{ display: 'flex', borderRadius: '6px', overflow: 'hidden', border: '1px solid var(--border)' }}>
+                        <button
+                          className={`btn btn-sm ${pdfFechaMode === 'fecha' ? 'btn-primary' : 'btn-outline'}`}
+                          style={{ flex: 1, borderRadius: 0, border: 'none' }}
+                          onClick={() => setPdfFechaMode('fecha')}
+                        >
+                          <Calendar size={11} /> Fecha sorteo
+                        </button>
+                        <button
+                          className={`btn btn-sm ${pdfFechaMode === 'agotarse' ? 'btn-primary' : 'btn-outline'}`}
+                          style={{ flex: 1, borderRadius: 0, border: 'none', borderLeft: '1px solid var(--border)' }}
+                          onClick={() => setPdfFechaMode('agotarse')}
+                        >
+                          Hasta agotar
+                        </button>
+                      </div>
+                    </div>
+                    <button className="toolbar-dd-item" onClick={() => { handlePDF(); setMenuPrint(false) }}>
+                      <FileText size={14} /> Resumen de la rifa
+                    </button>
+                    <button className="toolbar-dd-item" onClick={() => { handlePapelitos(); setMenuPrint(false) }}>
+                      <Scissors size={14} /> Papelitos para tómbola
+                    </button>
+                  </div>
+                </>
+              )}
             </div>
-            <button className="btn btn-outline btn-sm" onClick={handleExport} title="Exportar CSV">
-              <Download size={14} /> Exportar
-            </button>
-            {isAdmin && (
-              <button className="btn btn-outline btn-sm" onClick={() => fileInputRef.current?.click()} title="Importar CSV">
-                <Upload size={14} /> Importar
+
+            {/* ── Dropdown CSV ── */}
+            <div style={{ position: 'relative' }}>
+              <button
+                className="btn btn-outline"
+                onClick={() => { setMenuCSV(v => !v); setMenuPrint(false) }}
+              >
+                <Download size={15} /> CSV ▾
               </button>
-            )}
+              {menuCSV && (
+                <>
+                  <div style={{ position: 'fixed', inset: 0, zIndex: 9 }} onClick={() => setMenuCSV(false)} />
+                  <div className="toolbar-dd toolbar-dd-r" style={{ minWidth: '180px', zIndex: 10 }}>
+                    <button className="toolbar-dd-item" onClick={() => { handleExport(); setMenuCSV(false) }}>
+                      <Download size={14} /> Exportar boletos
+                    </button>
+                    {isAdmin && (
+                      <button className="toolbar-dd-item" onClick={() => { fileInputRef.current?.click(); setMenuCSV(false) }}>
+                        <Upload size={14} /> Importar CSV
+                      </button>
+                    )}
+                  </div>
+                </>
+              )}
+            </div>
+
             {isAdmin && stats.Liquidado > 0 && (
               <button className="btn btn-primary" onClick={handleElegirGanador}>
                 <Trophy size={15} /> {ganadores.length > 0 ? 'Otro ganador' : 'Elegir ganador'}

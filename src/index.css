@@ -1586,6 +1586,47 @@ html.google .stat-label {
 /* -- btn-sm ---------------------------------------------------------------- */
 .btn-sm { padding: .3rem .7rem; font-size: .8rem; }
 
+/* ── Toolbar dropdown menus ─────────────────────────────────────────────── */
+.toolbar-dd {
+  position: absolute;
+  top: calc(100% + .5rem);
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  box-shadow: 0 8px 24px rgba(0,0,0,.35);
+  z-index: 100;
+  padding: .5rem;
+  min-width: 200px;
+  animation: dropdownIn .15s cubic-bezier(.32,.72,0,1) both;
+}
+.toolbar-dd-r { right: 0; left: auto; }
+.toolbar-dd-l { left: 0;  right: auto; }
+@media (max-width: 520px) {
+  .toolbar-dd-r { left: 0; right: auto; }
+}
+.toolbar-dd-item {
+  display: flex;
+  align-items: center;
+  gap: .55rem;
+  width: 100%;
+  padding: .6rem .85rem;
+  font-size: .85rem;
+  font-weight: 500;
+  background: transparent;
+  border: none;
+  border-radius: 6px;
+  color: var(--text);
+  cursor: pointer;
+  text-align: left;
+  transition: background .12s;
+}
+.toolbar-dd-item:hover { background: rgba(99,102,241,.1); }
+.toolbar-dd-sep {
+  height: 1px;
+  background: var(--border);
+  margin: .4rem .25rem;
+}
+
 /* -- btn-icon -------------------------------------------------------------- */
 .btn-icon {
   display: inline-flex;

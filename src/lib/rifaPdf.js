@@ -124,3 +124,93 @@ export function generarRifaPDF(rifa, boletos, stats, total, opts = {}) {
   win.focus()
   setTimeout(() => { win.print() }, 600)
 }
+
+/**
+ * Genera una hoja de papelitos para tómbola física.
+ * Solo incluye boletos Apartados y Liquidados (con dueño asignado).
+ * Cada papelito muestra: número, nombre del participante, nombre de la rifa.
+ */
+export function generarPapelitosPDF(rifa, boletos, total) {
+  const nombre = rifa.nombre_premio ?? 'Rifa'
+  const digits = total <= 100 ? 2 : String(total).length
+  const pad    = n => String(n).padStart(digits, '0')
+
+  const vendidos = boletos.filter(b => b.estatus === 'Apartado' || b.estatus === 'Liquidado')
+
+  const papelitos = vendidos.map(b => `
+    <div class="ticket">
+      <!--<div class="ticket-rifa">${nombre}</div>-->
+      <div class="ticket-num">${pad(b.numero_asignado)}</div>
+      <div class="ticket-nombre">${b.nombre_completo ?? '—'}</div>
+    </div>`).join('')
+
+  const html = `<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<title>Papelitos — ${nombre}</title>
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { font-family: Arial, sans-serif; background: #fff; }
+
+  .grid {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 0;
+  }
+
+  .ticket {
+    border: 1px dashed #999;
+    padding: 6px 8px;
+    text-align: center;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    gap: 3px;
+    min-height: 72px;
+    page-break-inside: avoid;
+  }
+
+  .ticket-rifa {
+    font-size: 7px;
+    text-transform: uppercase;
+    letter-spacing: .05em;
+    color: #666;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+
+  .ticket-num {
+    font-size: 28px;
+    font-weight: 900;
+    line-height: 1;
+    letter-spacing: -.02em;
+  }
+
+  .ticket-nombre {
+    font-size: 9px;
+    font-weight: 600;
+    color: #333;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+
+  @media print {
+    @page { size: A4; margin: 1cm; }
+    * { -webkit-print-color-adjust: exact !important; print-color-adjust: exact !important; }
+  }
+</style>
+</head>
+<body>
+  <div class="grid">${papelitos}</div>
+</body>
+</html>`
+
+  const win = window.open('', '_blank', 'width=900,height=700')
+  win.document.write(html)
+  win.document.close()
+  win.focus()
+  setTimeout(() => { win.print() }, 400)
+}
